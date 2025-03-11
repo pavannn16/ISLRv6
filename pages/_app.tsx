@@ -5,10 +5,18 @@ import { inter } from '@/lib/fonts';
 import '@/styles/globals.css';
 import { DayPickerProvider } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';
+import { useEffect, useState } from "react";
 
-// Check if the app is in maintenance mode based on environment variable
 function MyApp({ Component, pageProps }: AppProps) {
-  const isMaintenanceMode = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === "true";
+  // Use state for client-side rendering compatibility
+  const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
+  
+  // Check maintenance mode after component mounts to ensure client-side value is used
+  useEffect(() => {
+    // Log for debugging
+    console.log("Maintenance mode value:", process.env.NEXT_PUBLIC_MAINTENANCE_MODE);
+    setIsMaintenanceMode(process.env.NEXT_PUBLIC_MAINTENANCE_MODE === "true");
+  }, []);
   
   // If maintenance mode is active, show maintenance page
   if (isMaintenanceMode) {

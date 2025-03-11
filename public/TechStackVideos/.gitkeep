@@ -1,0 +1,5 @@
+# This file ensures the TechStackVideos directory is tracked in git, even if it's empty
+# Place the video files here with the .webm extension:
+# - birdoriginal_original.webm
+# - birdoriginal_landmarks_overlay.webm
+# - birdoriginal_landmarks_only.webm

@@ -16,6 +16,7 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from gtts import gTTS
 import logging
+import math
 
 # Setup basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -26,16 +27,16 @@ CORS(app, resources={r"/*": {"origins": "*", "supports_credentials": True}})
 
 # --- Configuration ---
 UPLOAD_FOLDER = Path("saved_videos")
-VISUALIZER_OUTPUT_DIR = Path("/Users/pavan/Downloads/ISLRversions/ISLRv6 copy/public/Visualiser/") # Ensure this path is correct
+VISUALIZER_OUTPUT_DIR = Path("/Users/pavan/Downloads/ISLRversions/ISLRv6/public/Visualiser/") # Ensure this path is correct
 CAPTURED_VIDEO_FILENAME = "captured_video.mp4"
 CAPTURED_VIDEO_PATH = UPLOAD_FOLDER / CAPTURED_VIDEO_FILENAME
 TEMP_VIDEO_PATH = UPLOAD_FOLDER / "temp_video_upload" # Temporary path for initial upload
 
 # Model and Data Paths (Ensure these are correct)
-DUMMY_PARQUET_SKEL_FILE = Path('/Users/pavan/ISLRv2/data/239181.parquet')
-TFLITE_MODEL_PATH = Path('/Users/pavan/ISLRv2/models/asl_model.tflite')
-CSV_FILE_PATH = Path('/Users/pavan/ISLRv2/data/train.csv')
-CAPTURED_PARQUET_FILE = Path('/Users/pavan/ISLRv2/shammers.parquet') # Output for prediction model
+DUMMY_PARQUET_SKEL_FILE = Path('/Users/pavan/Downloads/ISLRversions/ISLRv6/backend_data/data/239181.parquet')
+TFLITE_MODEL_PATH = Path('/Users/pavan/Downloads/ISLRversions/ISLRv6/backend_data/models/asl_model.tflite')
+CSV_FILE_PATH = Path('/Users/pavan/Downloads/ISLRversions/ISLRv6/backend_data/data/train.csv')
+CAPTURED_PARQUET_FILE = Path('/Users/pavan/Downloads/ISLRversions/ISLRv6/backend_data/shammers.parquet') # Output for prediction model
 
 # --- Initialization ---
 logging.info("Initializing backend...")
@@ -324,18 +325,45 @@ class MediaPipeBatchProcessor:
         landmarks_overlay_path = output_dir / f'{input_filename_stem}_landmarks_overlay.mp4'
         landmarks_only_path = output_dir / f'{input_filename_stem}_landmarks_only.mp4'
 
-        # Use H.264 codec (avc1 is common for MP4)
-        fourcc = cv2.VideoWriter_fourcc(*'avc1')
+        # Calculate target FPS based on frame count and intended duration
+        # This ensures videos play at the correct speed regardless of network conditions
+        source_fps = self.fps
+        frame_count = len(self.all_frames)
+        
+        # Get original video duration in seconds from captured video
+        cap = cv2.VideoCapture(str(self.video_path))
+        if cap.isOpened():
+            orig_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            orig_fps = cap.get(cv2.CAP_PROP_FPS)
+            if orig_fps <= 0: 
+                orig_fps = 30  # Default if not detected
+            original_duration = orig_frame_count / orig_fps
+            cap.release()
+        else:
+            original_duration = frame_count / source_fps  # Fallback
+        
+        # Ensure minimum duration is respected
+        min_duration = 1.0  # Minimum 1 second video
+        target_duration = max(original_duration, min_duration)
+        
+        # Calculate target FPS to maintain correct duration
+        target_fps = frame_count / target_duration
+        logging.info(f"Video timing: frames={frame_count}, orig_duration={original_duration:.2f}s, target_fps={target_fps:.2f}")
+        
+        # Use H.264 codec with specific parameters for cross-platform compatibility
+        fourcc = cv2.VideoWriter_fourcc(*'avc1')  # H.264
 
-        # Create VideoWriters
-        # Note: Ensure self.width and self.height are correctly set during load_video
-        original_video = cv2.VideoWriter(str(original_video_path), fourcc, self.fps, (self.width, self.height))
-        landmarks_overlay_video = cv2.VideoWriter(str(landmarks_overlay_path), fourcc, self.fps, (self.width, self.height))
-        landmarks_only_video = cv2.VideoWriter(str(landmarks_only_path), fourcc, self.fps, (self.width, self.height))
+        # Create VideoWriters with target FPS for consistent playback
+        original_video = cv2.VideoWriter(str(original_video_path), fourcc, target_fps, 
+                                       (self.width, self.height))
+        landmarks_overlay_video = cv2.VideoWriter(str(landmarks_overlay_path), fourcc, target_fps,
+                                                (self.width, self.height))
+        landmarks_only_video = cv2.VideoWriter(str(landmarks_only_path), fourcc, target_fps,
+                                             (self.width, self.height))
 
         # Use Queues for potentially faster I/O writing in separate threads
         # Adjust maxsize based on memory/performance trade-off
-        queue_maxsize = max(10, int(self.fps)) # Buffer about 1 second
+        queue_maxsize = max(10, int(target_fps)) # Buffer about 1 second
         original_queue = Queue(maxsize=queue_maxsize)
         overlay_queue = Queue(maxsize=queue_maxsize)
         landmarks_queue = Queue(maxsize=queue_maxsize)
@@ -359,7 +387,6 @@ class MediaPipeBatchProcessor:
                     # Potentially signal main thread or stop processing?
             video_writer.release()
             logging.debug(f"Writer thread finished for {video_writer}")
-
 
         threads = [
             threading.Thread(target=writer_thread, args=(original_video, original_queue), daemon=True, name="OriginalWriter"),
@@ -395,7 +422,6 @@ class MediaPipeBatchProcessor:
                 # Use a default black background if creation failed
                 landmarks_only = self.landmarks_background.copy() if self.landmarks_background is not None else np.zeros_like(frame)
 
-
                 # Draw landmarks on both frames
                 self._draw_all_landmarks(result_to_draw, overlay_frame, landmarks_only)
 
@@ -405,12 +431,6 @@ class MediaPipeBatchProcessor:
                 # If no results, put original frame in overlay queue and blank in landmarks queue
                 overlay_queue.put(frame.copy()) # Use copy to avoid issues if frame modified later
                 landmarks_queue.put(self.landmarks_background.copy() if self.landmarks_background is not None else np.zeros_like(frame))
-
-
-        # Signal queues are done (optional if using stop_event primarily)
-        # original_queue.put(None)
-        # overlay_queue.put(None)
-        # landmarks_queue.put(None)
 
         # Wait for queues to be emptied by writer threads
         logging.info("Waiting for visualization writing queues to empty...")
@@ -426,6 +446,24 @@ class MediaPipeBatchProcessor:
             if t.is_alive():
                 logging.warning(f"Writer thread {t.name} did not terminate cleanly.")
 
+        # Re-encode videos with proper metadata to ensure cross-platform compatibility
+        logging.info("Re-encoding visualization videos for web compatibility...")
+        
+        for video_path in [original_video_path, landmarks_overlay_path, landmarks_only_path]:
+            temp_path = str(video_path) + ".temp.mp4"
+            shutil.move(str(video_path), temp_path)
+            
+            result = re_encode_video_with_duration(temp_path, str(video_path), target_duration)
+            if result:
+                try:
+                    os.remove(temp_path)
+                except OSError as e:
+                    logging.warning(f"Could not remove temporary file {temp_path}: {e}")
+            else:
+                # If re-encoding failed, restore original
+                shutil.move(temp_path, str(video_path))
+                logging.warning(f"Re-encoding failed for {video_path}, restored original")
+        
         elapsed_time = time.time() - start_time
         logging.info(f"Visualization video generation completed in {elapsed_time:.2f}s")
 
@@ -629,6 +667,140 @@ def re_encode_video(input_path, output_path):
     out.release()
     elapsed_time = time.time() - start_time
     logging.info(f"Re-encoding finished in {elapsed_time:.2f}s. Wrote {frame_count} frames.")
+    return True
+
+def re_encode_video_with_duration(input_path, output_path, target_duration):
+    """
+    Re-encodes video to ensure it plays at the correct speed with the specified duration.
+    This is important for cross-device/network viewing consistency.
+    """
+    logging.info(f"Re-encoding video from {input_path} to {output_path} with target duration {target_duration:.2f}s")
+    start_time = time.time()
+    
+    # First, extract frames from the input video
+    cap = cv2.VideoCapture(str(input_path))
+    if not cap.isOpened():
+        logging.error(f"Failed to open video for re-encoding: {input_path}")
+        return False
+
+    # Get video properties
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    
+    # Count frames manually for reliability
+    frames = []
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frames.append(frame)
+    
+    cap.release()
+    
+    frame_count = len(frames)
+    if frame_count == 0:
+        logging.error("No frames extracted from video")
+        return False
+    
+    # Calculate target FPS based on frame count and target duration
+    # This ensures the video plays for exactly the target duration
+    target_fps = frame_count / target_duration
+    
+    # Set minimum FPS to avoid browser playback issues
+    min_fps = 10.0
+    target_fps = max(target_fps, min_fps)
+    
+    # If we have very few frames but need to maintain duration, duplicate frames
+    if frame_count < min_fps * target_duration:
+        logging.info(f"Too few frames ({frame_count}) for smooth playback at {target_duration}s duration. Duplicating frames.")
+        
+        # Calculate how many times each frame needs to be duplicated
+        duplication_factor = math.ceil((min_fps * target_duration) / frame_count)
+        
+        # Duplicate frames
+        expanded_frames = []
+        for frame in frames:
+            for _ in range(duplication_factor):
+                expanded_frames.append(frame.copy())
+        
+        frames = expanded_frames
+        frame_count = len(frames)
+        
+        # Recalculate FPS based on new frame count
+        target_fps = frame_count / target_duration
+    
+    logging.info(f"Target parameters: {width}x{height}, {frame_count} frames, {target_fps:.2f} FPS, duration: {target_duration:.2f}s")
+    
+    # Write video with specific codec settings for better cross-platform compatibility
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')  # H.264
+    
+    # Try with different codec settings if needed for network compatibility
+    try:
+        # Higher bitrate for better quality
+        out = cv2.VideoWriter(
+            str(output_path), 
+            fourcc, 
+            target_fps,
+            (width, height),
+            True
+        )
+        
+        if not out.isOpened():
+            logging.error(f"Failed to open VideoWriter for output: {output_path}")
+            return False
+            
+        # Write frames
+        for frame in frames:
+            out.write(frame)
+            
+        out.release()
+        
+    except Exception as e:
+        logging.error(f"Error during video encoding: {e}")
+        return False
+        
+    # Verify the output file exists and has reasonable size
+    if not os.path.exists(output_path) or os.path.getsize(output_path) < 1000:  # At least 1KB
+        logging.error(f"Re-encoding failed: output file missing or too small: {output_path}")
+        return False
+        
+    # Use FFmpeg for a second-pass encoding if it's available (more reliable for network streaming)
+    try:
+        import subprocess
+        temp_path = str(output_path) + ".ffmpeg.mp4"
+        
+        # Use FFmpeg to create a more network-friendly version with explicit duration
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", str(output_path),
+            "-c:v", "libx264", 
+            "-preset", "medium",
+            "-profile:v", "baseline", # Better browser compatibility
+            "-level", "3.0",
+            "-pix_fmt", "yuv420p", # Required for browser compatibility
+            "-movflags", "+faststart", # Optimizes for web streaming
+            "-video_track_timescale", "90000", # Explicit high precision timescale
+            "-r", str(target_fps), # Force the target framerate
+            "-refs", "1", # Single reference frame for compatibility
+            "-strict", "experimental",
+            temp_path
+        ]
+        
+        logging.info(f"Running FFmpeg for enhanced web compatibility: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 1000:
+            os.replace(temp_path, output_path)
+            logging.info("FFmpeg processing successful, replaced with optimized video")
+        else:
+            logging.warning(f"FFmpeg processing failed, using original encoding. Error: {result.stderr}")
+    except Exception as e:
+        logging.warning(f"FFmpeg post-processing failed (non-critical): {e}")
+        # Continue with the OpenCV-generated file
+    
+    elapsed_time = time.time() - start_time
+    logging.info(f"Re-encoding with duration control finished in {elapsed_time:.2f}s. " + 
+                f"Wrote {frame_count} frames at {target_fps:.2f} FPS for {target_duration:.2f}s duration.")
     return True
 
 # --- Flask Routes ---

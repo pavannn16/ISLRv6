@@ -527,6 +527,10 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
       setPrediction("Processing video...");
       const formData = new FormData();
       formData.append("video", videoBlob, `sign_${Date.now()}.webm`);
+      
+      // Add recording duration to the form data - this is critical for consistent video timing
+      formData.append("duration", duration.toString());
+      console.log(`Sending recording duration: ${duration}s to backend`);
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -578,7 +582,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
       setIsDetecting(false);
       setCapturing(false);
     }
-  }, []);
+  }, [duration]); // Add duration dependency
 
   // Prevent form submission
   const handleStartRecording = React.useCallback(

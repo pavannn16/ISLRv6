@@ -17,6 +17,7 @@ from flask_cors import CORS
 from gtts import gTTS
 import logging
 import math
+import json
 
 # Setup basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -96,11 +97,12 @@ except Exception as e:
 class MediaPipeBatchProcessor:
     """Process video with MediaPipe once, optimized for prediction and visualization."""
 
-    def __init__(self, video_path, detection_confidence=0.5, tracking_confidence=0.5, model_complexity=1):
+    def __init__(self, video_path, detection_confidence=0.5, tracking_confidence=0.5, model_complexity=1, recording_duration=None):
         self.video_path = Path(video_path)
         self.detection_confidence = detection_confidence
         self.tracking_confidence = tracking_confidence
         self.model_complexity = model_complexity
+        self.recording_duration = recording_duration
 
         self.all_frames = []
         self.all_results_map = {} # Use dict for faster lookup: {frame_index: results}
@@ -325,30 +327,34 @@ class MediaPipeBatchProcessor:
         landmarks_overlay_path = output_dir / f'{input_filename_stem}_landmarks_overlay.mp4'
         landmarks_only_path = output_dir / f'{input_filename_stem}_landmarks_only.mp4'
 
-        # Calculate target FPS based on frame count and intended duration
-        # This ensures videos play at the correct speed regardless of network conditions
-        source_fps = self.fps
+        # Get frame count and set target duration
         frame_count = len(self.all_frames)
         
-        # Get original video duration in seconds from captured video
-        cap = cv2.VideoCapture(str(self.video_path))
-        if cap.isOpened():
-            orig_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            orig_fps = cap.get(cv2.CAP_PROP_FPS)
-            if orig_fps <= 0: 
-                orig_fps = 30  # Default if not detected
-            original_duration = orig_frame_count / orig_fps
-            cap.release()
+        # IMPORTANT: Prioritize the explicitly provided recording duration over calculated ones
+        if self.recording_duration is not None:
+            target_duration = self.recording_duration
+            logging.info(f"Using client-provided recording duration: {target_duration}s")
         else:
-            original_duration = frame_count / source_fps  # Fallback
+            # Calculate from video properties as fallback only
+            cap = cv2.VideoCapture(str(self.video_path))
+            if cap.isOpened():
+                orig_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                orig_fps = cap.get(cv2.CAP_PROP_FPS)
+                if orig_fps <= 0: 
+                    orig_fps = 30  # Default if not detected
+                original_duration = orig_frame_count / orig_fps
+                cap.release()
+            else:
+                original_duration = frame_count / self.fps  # Fallback to using frame count and frame rate
+            
+            # Ensure minimum duration is respected
+            min_duration = 1.0  # Minimum 1 second video
+            target_duration = max(original_duration, min_duration)
+            logging.info(f"Calculated target duration: {target_duration}s (no client duration provided)")
         
-        # Ensure minimum duration is respected
-        min_duration = 1.0  # Minimum 1 second video
-        target_duration = max(original_duration, min_duration)
-        
-        # Calculate target FPS to maintain correct duration
+        # Calculate target FPS based on frame count and target duration
         target_fps = frame_count / target_duration
-        logging.info(f"Video timing: frames={frame_count}, orig_duration={original_duration:.2f}s, target_fps={target_fps:.2f}")
+        logging.info(f"Video timing: frames={frame_count}, target_duration={target_duration:.2f}s, target_fps={target_fps:.2f}")
         
         # Use H.264 codec with specific parameters for cross-platform compatibility
         fourcc = cv2.VideoWriter_fourcc(*'avc1')  # H.264
@@ -388,6 +394,7 @@ class MediaPipeBatchProcessor:
             video_writer.release()
             logging.debug(f"Writer thread finished for {video_writer}")
 
+
         threads = [
             threading.Thread(target=writer_thread, args=(original_video, original_queue), daemon=True, name="OriginalWriter"),
             threading.Thread(target=writer_thread, args=(landmarks_overlay_video, overlay_queue), daemon=True, name="OverlayWriter"),
@@ -422,6 +429,7 @@ class MediaPipeBatchProcessor:
                 # Use a default black background if creation failed
                 landmarks_only = self.landmarks_background.copy() if self.landmarks_background is not None else np.zeros_like(frame)
 
+
                 # Draw landmarks on both frames
                 self._draw_all_landmarks(result_to_draw, overlay_frame, landmarks_only)
 
@@ -431,6 +439,7 @@ class MediaPipeBatchProcessor:
                 # If no results, put original frame in overlay queue and blank in landmarks queue
                 overlay_queue.put(frame.copy()) # Use copy to avoid issues if frame modified later
                 landmarks_queue.put(self.landmarks_background.copy() if self.landmarks_background is not None else np.zeros_like(frame))
+
 
         # Wait for queues to be emptied by writer threads
         logging.info("Waiting for visualization writing queues to empty...")
@@ -453,6 +462,7 @@ class MediaPipeBatchProcessor:
             temp_path = str(video_path) + ".temp.mp4"
             shutil.move(str(video_path), temp_path)
             
+            # Make sure to pass the client-provided duration to re-encode function
             result = re_encode_video_with_duration(temp_path, str(video_path), target_duration)
             if result:
                 try:
@@ -474,17 +484,25 @@ class MediaPipeBatchProcessor:
         }
 
     def _draw_all_landmarks(self, results, overlay_frame, landmarks_only):
-        """Helper to draw all landmark types on the frames."""
-        # Draw Face Mesh
+        """Helper to draw all landmark types on the frames with optimized rendering."""
+        # Optimize face mesh rendering - reduce detail for performance
         if results.face_landmarks:
+            # For face mesh, use a simplified drawing with fewer connections for better performance
+            simplified_spec = mp_drawing.DrawingSpec(
+                color=self.face_color, 
+                thickness=max(1, self.face_landmark_drawing_spec.thickness - 1),
+                circle_radius=max(1, self.face_landmark_drawing_spec.circle_radius - 1)
+            )
+            
+            # Draw only key facial features rather than full mesh for better performance
             mp_drawing.draw_landmarks(
                 overlay_frame, results.face_landmarks, mp_holistic.FACEMESH_CONTOURS,
-                self.face_landmark_drawing_spec, self.face_connection_drawing_spec)
+                simplified_spec, self.face_connection_drawing_spec)
             mp_drawing.draw_landmarks(
                 landmarks_only, results.face_landmarks, mp_holistic.FACEMESH_CONTOURS,
-                self.face_landmark_drawing_spec, self.face_connection_drawing_spec)
+                simplified_spec, self.face_connection_drawing_spec)
 
-        # Draw Pose
+        # Draw Pose with optimized settings
         if results.pose_landmarks:
             mp_drawing.draw_landmarks(
                 overlay_frame, results.pose_landmarks, mp_holistic.POSE_CONNECTIONS,
@@ -493,23 +511,29 @@ class MediaPipeBatchProcessor:
                 landmarks_only, results.pose_landmarks, mp_holistic.POSE_CONNECTIONS,
                 self.pose_landmark_drawing_spec, self.pose_connection_drawing_spec)
 
-        # Draw Left Hand
+        # Draw Hands with more attention since they're most important for sign language
+        # Left Hand
         if results.left_hand_landmarks:
+            # For hands, use slightly thicker lines for visibility over network
             mp_drawing.draw_landmarks(
                 overlay_frame, results.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS,
-                self.hand_left_landmark_drawing_spec, self.hand_left_connection_drawing_spec)
+                mp_drawing.DrawingSpec(color=self.hand_left_color, thickness=3, circle_radius=3),
+                mp_drawing.DrawingSpec(color=(121, 44, 250), thickness=2))
             mp_drawing.draw_landmarks(
                 landmarks_only, results.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS,
-                self.hand_left_landmark_drawing_spec, self.hand_left_connection_drawing_spec)
+                mp_drawing.DrawingSpec(color=self.hand_left_color, thickness=3, circle_radius=3),
+                mp_drawing.DrawingSpec(color=(121, 44, 250), thickness=2))
 
-        # Draw Right Hand
+        # Right Hand
         if results.right_hand_landmarks:
             mp_drawing.draw_landmarks(
                 overlay_frame, results.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS,
-                self.hand_right_landmark_drawing_spec, self.hand_right_connection_drawing_spec)
+                mp_drawing.DrawingSpec(color=self.hand_right_color, thickness=3, circle_radius=3),
+                mp_drawing.DrawingSpec(color=(219, 112, 219), thickness=2))
             mp_drawing.draw_landmarks(
                 landmarks_only, results.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS,
-                self.hand_right_landmark_drawing_spec, self.hand_right_connection_drawing_spec)
+                mp_drawing.DrawingSpec(color=self.hand_right_color, thickness=3, circle_radius=3),
+                mp_drawing.DrawingSpec(color=(219, 112, 219), thickness=2))
 
 # --- Helper Functions ---
 
@@ -672,12 +696,12 @@ def re_encode_video(input_path, output_path):
 def re_encode_video_with_duration(input_path, output_path, target_duration):
     """
     Re-encodes video to ensure it plays at the correct speed with the specified duration.
-    This is important for cross-device/network viewing consistency.
+    This function preserves the original video characteristics as much as possible.
     """
     logging.info(f"Re-encoding video from {input_path} to {output_path} with target duration {target_duration:.2f}s")
     start_time = time.time()
     
-    # First, extract frames from the input video
+    # Get the properties of the input video
     cap = cv2.VideoCapture(str(input_path))
     if not cap.isOpened():
         logging.error(f"Failed to open video for re-encoding: {input_path}")
@@ -686,121 +710,74 @@ def re_encode_video_with_duration(input_path, output_path, target_duration):
     # Get video properties
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    source_fps = cap.get(cv2.CAP_PROP_FPS)
     
-    # Count frames manually for reliability
-    frames = []
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        frames.append(frame)
+    if source_fps <= 0:
+        # If the FPS is not valid, use a reasonable default
+        source_fps = 30.0
+        logging.warning(f"Invalid source FPS detected, using default: {source_fps}")
     
-    cap.release()
-    
-    frame_count = len(frames)
-    if frame_count == 0:
-        logging.error("No frames extracted from video")
-        return False
-    
-    # Calculate target FPS based on frame count and target duration
-    # This ensures the video plays for exactly the target duration
-    target_fps = frame_count / target_duration
-    
-    # Set minimum FPS to avoid browser playback issues
-    min_fps = 10.0
-    target_fps = max(target_fps, min_fps)
-    
-    # If we have very few frames but need to maintain duration, duplicate frames
-    if frame_count < min_fps * target_duration:
-        logging.info(f"Too few frames ({frame_count}) for smooth playback at {target_duration}s duration. Duplicating frames.")
+    # Count frames in the source video
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    if frame_count <= 0:
+        # Count frames manually if metadata is unreliable
+        frame_count = 0
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+        while True:
+            ret, _ = cap.read()
+            if not ret:
+                break
+            frame_count += 1
         
-        # Calculate how many times each frame needs to be duplicated
-        duplication_factor = math.ceil((min_fps * target_duration) / frame_count)
-        
-        # Duplicate frames
-        expanded_frames = []
-        for frame in frames:
-            for _ in range(duplication_factor):
-                expanded_frames.append(frame.copy())
-        
-        frames = expanded_frames
-        frame_count = len(frames)
-        
-        # Recalculate FPS based on new frame count
-        target_fps = frame_count / target_duration
+        logging.info(f"Manually counted {frame_count} frames in source video")
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Reset to beginning
     
-    logging.info(f"Target parameters: {width}x{height}, {frame_count} frames, {target_fps:.2f} FPS, duration: {target_duration:.2f}s")
+    # Calculate the actual duration of the source video
+    actual_duration = frame_count / source_fps
+    logging.info(f"Source video has {frame_count} frames at {source_fps:.2f} FPS (actual duration: {actual_duration:.2f}s)")
     
-    # Write video with specific codec settings for better cross-platform compatibility
-    fourcc = cv2.VideoWriter_fourcc(*'avc1')  # H.264
-    
-    # Try with different codec settings if needed for network compatibility
+    # Re-encode the video using FFmpeg directly to preserve timing metadata
     try:
-        # Higher bitrate for better quality
-        out = cv2.VideoWriter(
-            str(output_path), 
-            fourcc, 
-            target_fps,
-            (width, height),
-            True
-        )
+        import subprocess
         
-        if not out.isOpened():
-            logging.error(f"Failed to open VideoWriter for output: {output_path}")
+        # Use FFmpeg to create a web-compatible version while preserving timing
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", str(input_path),
+            "-c:v", "libx264",  # Use H.264 codec
+            "-preset", "medium",
+            "-profile:v", "baseline",  # Better browser compatibility
+            "-level", "3.0",
+            "-pix_fmt", "yuv420p",  # Required for browser compatibility
+            "-movflags", "+faststart",  # Optimizes for web streaming
+            "-video_track_timescale", "90000",  # High precision timescale
+            # Use the original FPS
+            "-r", str(source_fps),
+            # Set explicit duration metadata if needed
+            "-metadata", f"duration={target_duration}",
+            output_path
+        ]
+        
+        logging.info(f"Running FFmpeg to preserve original characteristics: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            logging.error(f"FFmpeg processing failed: {result.stderr}")
             return False
             
-        # Write frames
-        for frame in frames:
-            out.write(frame)
+        # Verify the output file exists and has reasonable size
+        if not os.path.exists(output_path) or os.path.getsize(output_path) < 1000:  # At least 1KB
+            logging.error(f"Re-encoding failed: output file missing or too small: {output_path}")
+            return False
             
-        out.release()
+        logging.info(f"FFmpeg processing successful, created video with original characteristics")
         
     except Exception as e:
         logging.error(f"Error during video encoding: {e}")
         return False
-        
-    # Verify the output file exists and has reasonable size
-    if not os.path.exists(output_path) or os.path.getsize(output_path) < 1000:  # At least 1KB
-        logging.error(f"Re-encoding failed: output file missing or too small: {output_path}")
-        return False
-        
-    # Use FFmpeg for a second-pass encoding if it's available (more reliable for network streaming)
-    try:
-        import subprocess
-        temp_path = str(output_path) + ".ffmpeg.mp4"
-        
-        # Use FFmpeg to create a more network-friendly version with explicit duration
-        cmd = [
-            "ffmpeg", "-y",
-            "-i", str(output_path),
-            "-c:v", "libx264", 
-            "-preset", "medium",
-            "-profile:v", "baseline", # Better browser compatibility
-            "-level", "3.0",
-            "-pix_fmt", "yuv420p", # Required for browser compatibility
-            "-movflags", "+faststart", # Optimizes for web streaming
-            "-video_track_timescale", "90000", # Explicit high precision timescale
-            "-r", str(target_fps), # Force the target framerate
-            "-refs", "1", # Single reference frame for compatibility
-            "-strict", "experimental",
-            temp_path
-        ]
-        
-        logging.info(f"Running FFmpeg for enhanced web compatibility: {' '.join(cmd)}")
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        
-        if result.returncode == 0 and os.path.exists(temp_path) and os.path.getsize(temp_path) > 1000:
-            os.replace(temp_path, output_path)
-            logging.info("FFmpeg processing successful, replaced with optimized video")
-        else:
-            logging.warning(f"FFmpeg processing failed, using original encoding. Error: {result.stderr}")
-    except Exception as e:
-        logging.warning(f"FFmpeg post-processing failed (non-critical): {e}")
-        # Continue with the OpenCV-generated file
     
     elapsed_time = time.time() - start_time
-    logging.info(f"Re-encoding with duration control finished in {elapsed_time:.2f}s. " + 
-                f"Wrote {frame_count} frames at {target_fps:.2f} FPS for {target_duration:.2f}s duration.")
+    logging.info(f"Re-encoding finished in {elapsed_time:.2f}s. Preserved original {frame_count} frames at {source_fps:.2f} FPS.")
     return True
 
 # --- Flask Routes ---
@@ -818,6 +795,19 @@ def predict():
         logging.warning("No selected file in request.")
         return jsonify({"error": "No selected file"}), 400
 
+    # Get recording duration from request if provided
+    recording_duration = request.form.get("duration")
+    if recording_duration:
+        try:
+            recording_duration = float(recording_duration)
+            logging.info(f"Client provided recording duration: {recording_duration}s")
+        except (ValueError, TypeError):
+            recording_duration = None
+            logging.warning("Invalid recording duration provided, will calculate from video")
+    else:
+        recording_duration = None
+        logging.info("No recording duration provided, will calculate from video")
+
     # 1. Save Uploaded File Temporarily
     try:
         # Ensure upload folder exists (it should, but double-check)
@@ -825,6 +815,22 @@ def predict():
         temp_input_path = TEMP_VIDEO_PATH # Use defined temp path
         file.save(temp_input_path)
         logging.info(f"Temporary video saved to: {temp_input_path}")
+
+        # If recording duration was not provided, try to determine it from the source video
+        if recording_duration is None:
+            try:
+                cap = cv2.VideoCapture(str(temp_input_path))
+                if cap.isOpened():
+                    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                    fps = cap.get(cv2.CAP_PROP_FPS)
+                    if fps > 0 and frame_count > 0:
+                        video_duration = frame_count / fps
+                        recording_duration = video_duration
+                        logging.info(f"Calculated video duration: {recording_duration:.2f}s")
+                    cap.release()
+            except Exception as e:
+                logging.warning(f"Failed to determine video duration: {e}")
+                # We'll still continue with the default duration handling
     except Exception as e:
         logging.error(f"Error saving uploaded file: {e}", exc_info=True)
         return jsonify({"error": "Failed to save uploaded video"}), 500
@@ -840,6 +846,17 @@ def predict():
                  logging.warning(f"Could not remove temp file {temp_input_path} after re-encode failure: {e_unlink}")
         return jsonify({"error": "Failed to process (re-encode) video"}), 500
 
+    # Save recording duration to a metadata file
+    if recording_duration:
+        metadata_path = UPLOAD_FOLDER / "recording_metadata.json"
+        try:
+            with open(metadata_path, 'w') as f:
+                json.dump({"duration": recording_duration}, f)
+            logging.info(f"Saved recording duration metadata: {recording_duration}s")
+        except Exception as e:
+            logging.warning(f"Failed to save recording duration metadata: {e}")
+            # Continue anyway, as this is non-critical
+
     # 3. Clean up temporary uploaded file
     if temp_input_path.exists():
         try:
@@ -852,7 +869,7 @@ def predict():
     # 4. Process Video for Prediction (MediaPipe Landmarks)
     logging.info("Starting video processing for prediction...")
     process_start_time = time.time()
-    processor = MediaPipeBatchProcessor(CAPTURED_VIDEO_PATH) # Use the re-encoded video
+    processor = MediaPipeBatchProcessor(CAPTURED_VIDEO_PATH, recording_duration=recording_duration) # Pass the duration to the processor
 
     try:
         num_frames = processor.load_video()
@@ -891,7 +908,8 @@ def predict():
         "sign": detected_sign,
         "confidence": confidence,
         "audio_url": audio_url,
-        "visualization_status": "processing" # Indicate videos are being generated
+        "visualization_status": "processing", # Indicate videos are being generated
+        "recording_duration": recording_duration # Include the duration in the response
     }
 
     # 8. Start Visualization Generation in Background Thread

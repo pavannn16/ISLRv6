@@ -1,0 +1,22 @@
+npm run dev -- -H 0.0.0.0
+
+
+
+http://192.168.0.101:3000
+Accessing Camera on HTTP Sites from Different Devices
+When accessing your application from another device using HTTP (not HTTPS), you'll encounter camera permission issues because modern browsers block camera access on non-secure connections. Here are two solutions to this problem:
+
+Solution 1: Enable Insecure Camera Access in Chrome (Temporary Testing Only)
+For temporary testing purposes only, you can configure Chrome on the client machine to allow camera access on insecure origins:
+
+On the Windows machine, open Chrome and navigate to:
+chrome://flags/#unsafely-treat-insecure-origin-as-secure
+Find the setting "Insecure origins treated as secure"
+
+Enter your application's URL in the text field:
+http://192.168.0.101:3000
+Change the dropdown from "Disabled" to "Enabled"
+
+Click "Relaunch" to restart Chrome
+
+When you visit the site again, you should be able to grant camera permissions

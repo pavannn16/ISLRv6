@@ -530,7 +530,10 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-      const response = await fetch("http://localhost:5000/predict", {
+      // Use environment variable for API URL
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"; // Fallback to localhost if not set
+
+      const response = await fetch(`${apiUrl}/predict`, { // Use the apiUrl variable
         method: "POST",
         body: formData,
         signal: controller.signal,
@@ -554,8 +557,9 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
         setCapturing(false);
 
         if (responseData.audio_url) {
+          // Use environment variable for audio URL as well
           const audio = new Audio(
-            `http://localhost:5000${responseData.audio_url}?t=${Date.now()}`
+            `${apiUrl}${responseData.audio_url}?t=${Date.now()}` // Use the apiUrl variable
           );
           void audio.play().catch(console.error);
         }
@@ -1082,15 +1086,16 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.6, delay: 0.2 }}
-                          className="flex justify-center"
+                          className="flex flex-col sm:flex-row justify-center gap-6"
                         >
+                          {/* Learn button - PixelCard only, no extra animations */}
                           <Link href="/dictionary">
-                            <PixelCard 
-                              variant="pink" 
-                              className="h-[120px] w-[320px] cursor-pointer hover:scale-[1.02] transition-transform"
-                            >
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="flex flex-col items-center gap-1 z-10">
+                            <div className="h-[320px] w-full sm:w-[280px]">
+                              <PixelCard 
+                                variant="pink" 
+                                className="h-full w-full cursor-pointer"
+                              >
+                                <div className="flex flex-col items-center gap-2">
                                   <div className="flex items-center gap-3">
                                     <Image
                                       src="/assets/SignEaseLogo.png"
@@ -1106,18 +1111,43 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                                       Learn
                                     </span>
                                   </div>
-                                  <span className="text-sm text-white/80 mt-1">
+                                  <span className="text-sm text-white/80">
                                     Explore Sign Dictionary
                                   </span>
                                 </div>
-                              </div>
-                            </PixelCard>
+                              </PixelCard>
+                            </div>
+                          </Link>
+
+                          {/* Visualize button - PixelCard only, no extra animations */}
+                          <Link href="/visualize">
+                            <div className="h-[320px] w-full sm:w-[280px]">
+                              <PixelCard 
+                                variant="blue" 
+                                className="h-full w-full cursor-pointer"
+                              >
+                                <div className="flex flex-col items-center gap-2">
+                                  <div className="flex items-center gap-3">
+                                    <IoPlayCircle className="text-3xl text-indigo-300" />
+                                    <span className={cn(
+                                      "text-2xl font-bold text-white",
+                                      pacifico.className
+                                    )}>
+                                      Visualize
+                                    </span>
+                                  </div>
+                                  <span className="text-sm text-white/80">
+                                    See AI Technology in Action
+                                  </span>
+                                </div>
+                              </PixelCard>
+                            </div>
                           </Link>
                         </motion.div>
                       </div>
                     </div>
 
-                    {/* Enhanced Result section with better styling and animations */}
+                    {/* Enhanced Result section with better spacing and readability */}
                     <div className="flex-1 flex flex-col lg:border-l lg:border-white/10 lg:pl-8">
                       <motion.h3 
                         className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white/90 to-rose-300 mb-6"
@@ -1198,7 +1228,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                               transition={{ duration: 0.5 }}
                             >
                               <motion.div
-                                className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500/20 to-rose-500/20 flex items-center justify-center mb-6"
+                                className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500/20 to-rose-500/20 flex items-center justify-center mb-8" // Increased margin
                                 animate={{ 
                                   boxShadow: [
                                     "0 0 0 rgba(255,255,255,0)",
@@ -1227,12 +1257,12 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.6, delay: 0.2 }}
-                                className="space-y-6"
+                                className="space-y-8" // Increased spacing
                               >
                                 <motion.h3
                                   className={cn(
-                                    "text-4xl font-bold text-white",
-                                    pacifico.className
+                                    "text-5xl font-bold text-white",
+                                    pacifico.className // Add Pacifico font class here
                                   )}
                                   animate={{
                                     textShadow: [
@@ -1247,10 +1277,10 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                                 </motion.h3>
                                 
                                 <div className="flex flex-col items-center">
-                                  <p className="text-white/60 text-sm mb-2">
+                                  <p className="text-white/60 text-sm mb-3"> {/* Increased spacing */}
                                     Confidence Level
                                   </p>
-                                  <div className="w-full h-3 bg-white/10 rounded-full mt-1 mb-2 overflow-hidden">
+                                  <div className="w-full max-w-xs h-3 bg-white/10 rounded-full mt-1 mb-3 overflow-hidden"> {/* Added max-width and increased spacing */}
                                     <motion.div
                                       className="h-full bg-gradient-to-r from-indigo-500 to-rose-500"
                                       initial={{ width: 0 }}
@@ -1262,7 +1292,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                                     ></motion.div>
                                   </div>
                                   <motion.p 
-                                    className="text-white/90 font-medium px-4 py-1 bg-white/5 rounded-full"
+                                    className="text-white/90 font-medium px-5 py-2 bg-white/5 rounded-full" // Increased padding
                                     initial={{ scale: 0.8 }}
                                     animate={{ scale: 1 }}
                                     transition={{ type: "spring", stiffness: 300, damping: 10 }}
@@ -1310,55 +1340,71 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                           )}
                         </motion.div>
 
+                        {/* How to use section with improved layout */}
                         <motion.div 
-                          className="mt-6 bg-white/[0.02] border border-white/[0.05] rounded-xl p-5"
+                          className="mt-6 bg-white/[0.02] border border-white/[0.05] rounded-xl p-6" // Increased padding
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.5, delay: 0.3 }}
                           whileHover={{ borderColor: "rgba(255,255,255,0.1)" }}
                         >
-                          <h4 className="text-sm font-medium text-white/80 mb-3 flex items-center gap-2">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-500/20">
+                          <h4 className="text-base font-medium text-white/80 mb-4 flex items-center gap-2"> {/* Increased size and spacing */}
+                            <motion.span 
+                              className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500/20"
+                              animate={{ 
+                                scale: [1, 1.1, 1],
+                                boxShadow: [
+                                  "0 0 0px rgba(129, 140, 248, 0.3)",
+                                  "0 0 5px rgba(129, 140, 248, 0.6)",
+                                  "0 0 0px rgba(129, 140, 248, 0.3)"
+                                ] 
+                              }}
+                              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                            >
                               <span className="h-1.5 w-1.5 rounded-full bg-indigo-300"></span>
-                            </span>
+                            </motion.span>
                             How to use
                           </h4>
                           
-                          <ol className="list-decimal list-inside space-y-3 text-sm text-white/60 ml-1">
+                          <ol className="list-decimal list-inside space-y-3 text-sm text-white/60 ml-2 mb-4"> {/* Increased spacing */}
                             <motion.li
                               initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1 }}
+                              animate={{ opacity: 1, x: 0 }}
                               transition={{ duration: 0.5, delay: 0.1 }}
+                              className="pb-1" // Added padding between items
                             >
                               Position yourself clearly in the camera view
                             </motion.li>
                             <motion.li
                               initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1 }}
+                              animate={{ opacity: 1, x: 0 }}
                               transition={{ duration: 0.5, delay: 0.2 }}
+                              className="pb-1" // Added padding between items
                             >
                               Use the slider below the camera to adjust
                               recording duration (1-10 seconds)
                             </motion.li>
                             <motion.li
                               initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1 }}
+                              animate={{ opacity: 1, x: 0 }}
                               transition={{ duration: 0.5, delay: 0.3 }}
+                              className="pb-1" // Added padding between items
                             >
                               Click the "Start Recording" button and perform
                               your sign gesture
                             </motion.li>
                             <motion.li
                               initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1 }}
+                              animate={{ opacity: 1, x: 0 }}
                               transition={{ duration: 0.5, delay: 0.4 }}
+                              className="pb-1" // Added padding between items
                             >
                               Hold the gesture steadily until recording
                               completes
                             </motion.li>
                             <motion.li
                               initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1 }}
+                              animate={{ opacity: 1, x: 0 }}
                               transition={{ duration: 0.5, delay: 0.5 }}
                             >
                               Wait for AI analysis and your sign language
@@ -1366,15 +1412,16 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                             </motion.li>
                           </ol>
 
-                          <div className="mt-3 p-2 bg-indigo-500/10 rounded-lg">
-                            <p className="text-xs text-indigo-300/80">
+                          <div className="mt-4 p-3 bg-indigo-500/10 rounded-lg border border-indigo-500/10"> {/* Added border and increased padding */}
+                            <p className="text-xs text-indigo-300/90 leading-relaxed"> {/* Improved readability with line height */}
                               <strong>Tip:</strong> For best results, ensure
                               good lighting and perform clear, deliberate
                               gestures
                             </p>
                           </div>
                         </motion.div>
-                        {/* Add a button to replay welcome message - improved visibility */}
+                        
+                        {/* Replay instructions button with improved styling */}
                         {hasPlayedWelcome && (
                           <motion.div 
                             initial={{ opacity: 0, y: 10 }}
@@ -1382,14 +1429,17 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                             transition={{ delay: 1, duration: 0.5 }}
                             className="mt-4 text-center"
                           >
-                            <button
+                            <motion.button
                               onClick={handleManualSpeech}
                               disabled={isSpeaking}
-                              className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 text-indigo-300 hover:text-indigo-200 transition-colors text-xs"
+                              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-indigo-300 hover:text-indigo-200 transition-colors text-sm border border-white/5" // Improved button appearance
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              transition={{ type: "spring", stiffness: 400, damping: 10 }}
                             >
-                              <IoVolumeHigh className="text-sm" />
+                              <IoVolumeHigh className="text-base" />
                               <span>Replay instructions</span>
-                            </button>
+                            </motion.button>
                           </motion.div>
                         )}
                       </div>
@@ -1398,27 +1448,44 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                 </motion.div>
               </motion.div>
 
-              {/* Additional info section */}
+              {/* Additional info section with improved styling */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.7, delay: 0.6 }}
-                className="mt-12 w-full max-w-4xl mx-auto text-center"
+                className="mt-20 w-full max-w-4xl mx-auto text-center" // Increased top margin
               >
-                <h3 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white/90 to-rose-300 mb-4">
+                <motion.h3 
+                  className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white/90 to-rose-300 mb-5" // Increased spacing
+                  animate={{
+                    textShadow: [
+                      "0 0 0px rgba(255,255,255,0)",
+                      "0 0 2px rgba(255,255,255,0.3)",
+                      "0 0 0px rgba(255,255,255,0)"
+                    ]
+                  }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                >
                   Technology Behind SignEase
-                </h3>
-                <p className="text-white/60 mb-6">
+                </motion.h3>
+                <p className="text-white/60 mb-8 max-w-2xl mx-auto"> {/* Added max width and increased spacing */}
                   Our AI-powered sign language recognition system uses advanced
                   computer vision and machine learning to provide accurate,
                   real-time translations.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center gap-4">
-                  <Link
-                    href="/#technology"
-                    className="px-6 py-3 bg-white/[0.03] border border-white/10 rounded-full flex items-center justify-center gap-2 hover:bg-white/[0.05] transition-all text-white/90"
-                  >
-                    Learn More <FaArrowRight className="text-sm" />
+                  <Link href="/#technology">
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                    >
+                      <Button
+                        className="bg-gradient-to-r from-indigo-500 to-rose-500 text-white px-8 py-6 rounded-full shadow-lg shadow-indigo-500/20 flex items-center gap-2" // Updated to match app theme
+                      >
+                        Learn More <FaArrowRight className="text-sm" />
+                      </Button>
+                    </motion.div>
                   </Link>
                 </div>
               </motion.div>

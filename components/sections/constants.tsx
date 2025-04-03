@@ -19,7 +19,7 @@ export const techStackItems: TechCardProps[] = [
     name: "Frame Capture",
     description: "Utilizing OpenCV for precise real-time frame capture and processing",
     longDescription: "Our frame capture system utilizes OpenCV to process video input in real-time. It optimizes frame rates while applying preprocessing techniques to enhance quality. The system detects and tracks hands with stable boundary detection, ensuring accurate sign language recognition across varying lighting conditions.",
-    videoUrl: "/TechStackVideos/birdoriginal_original.webm",
+    videoUrl: "/TechStackVideos/birdoriginal_original.mp4",
     demoUrl: "/sign-detection"
   },
   {
@@ -28,7 +28,7 @@ export const techStackItems: TechCardProps[] = [
     name: "Mediapipe Processing",
     description: "Advanced landmark detection for hands, pose, and facial features",
     longDescription: "The MediaPipe Holistic model tracks 543 distinct points across the body: 33 pose landmarks, 468 facial landmarks, and 21 landmarks per hand. This comprehensive tracking enables precise detection of sign language gestures, capturing intricate expressions and movements essential for interpretation.",
-    videoUrl: "/TechStackVideos/birdoriginal_landmarks_overlay.webm",
+    videoUrl: "/TechStackVideos/birdoriginal_landmarks_overlay.mp4",
     demoUrl: "/sign-detection"
   },
   {
@@ -37,7 +37,7 @@ export const techStackItems: TechCardProps[] = [
     name: "AI Model",
     description: "87% accurate Transformer model for real-time sign language interpretation",
     longDescription: "Our transformer model achieves 87% accuracy in sign language recognition using multi-layered attention mechanisms. It processes landmark data to analyze spatial relationships between points. The model employs transfer learning and is optimized for low-latency inference, enabling real-time translation of sign gestures.",
-    videoUrl: "/TechStackVideos/birdoriginal_landmarks_only.webm",
+    videoUrl: "/TechStackVideos/birdoriginal_landmarks_only.mp4",
     demoUrl: "/sign-detection"
   }
 ];

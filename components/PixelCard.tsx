@@ -1,7 +1,10 @@
+"use client";
+
 import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
 
-// Define TypeScript interfaces for the Pixel class
-interface IPixel {
+// Define the Pixel class for animation
+class Pixel {
   width: number;
   height: number;
   ctx: CanvasRenderingContext2D;
@@ -15,37 +18,15 @@ interface IPixel {
   maxSizeInteger: number;
   maxSize: number;
   delay: number;
+  disappearDelay: number;
   counter: number;
+  disappearCounter: number;
   counterStep: number;
   isIdle: boolean;
   isReverse: boolean;
   isShimmer: boolean;
-  getRandomValue: (min: number, max: number) => number;
-  draw: () => void;
-  appear: () => void;
-  disappear: () => void;
-  shimmer: () => void;
-}
-
-class Pixel implements IPixel {
-  width: number;
-  height: number;
-  ctx: CanvasRenderingContext2D;
-  x: number;
-  y: number;
-  color: string;
-  speed: number;
-  size: number;
-  sizeStep: number;
-  minSize: number;
-  maxSizeInteger: number;
-  maxSize: number;
-  delay: number;
-  counter: number;
-  counterStep: number;
-  isIdle: boolean;
-  isReverse: boolean;
-  isShimmer: boolean;
+  isDisappearing: boolean;
+  centerDistance: number;
 
   constructor(
     canvas: HTMLCanvasElement, 
@@ -53,8 +34,8 @@ class Pixel implements IPixel {
     x: number, 
     y: number, 
     color: string, 
-    speed: number, 
-    delay: number
+    speed: number,
+    normalizedDistance: number
   ) {
     this.width = canvas.width;
     this.height = canvas.height;
@@ -68,12 +49,18 @@ class Pixel implements IPixel {
     this.minSize = 0.5;
     this.maxSizeInteger = 2;
     this.maxSize = this.getRandomValue(this.minSize, this.maxSizeInteger);
-    this.delay = delay;
+    // Appearance starts from center out - closer pixels appear first
+    this.delay = normalizedDistance * 200;
+    // Disappearance starts from outside in - farther pixels disappear first
+    this.disappearDelay = (1 - normalizedDistance) * 200;
     this.counter = 0;
+    this.disappearCounter = 0;
     this.counterStep = Math.random() * 4 + (this.width + this.height) * 0.01;
     this.isIdle = false;
     this.isReverse = false;
     this.isShimmer = false;
+    this.isDisappearing = false;
+    this.centerDistance = normalizedDistance;
   }
 
   getRandomValue(min: number, max: number): number {
@@ -81,6 +68,8 @@ class Pixel implements IPixel {
   }
 
   draw(): void {
+    if (this.size <= 0.01) return;
+    
     const centerOffset = this.maxSizeInteger * 0.5 - this.size * 0.5;
     this.ctx.fillStyle = this.color;
     this.ctx.fillRect(
@@ -92,156 +81,153 @@ class Pixel implements IPixel {
   }
 
   appear(): void {
-    this.isIdle = false;
+    this.isDisappearing = false;
+    this.disappearCounter = 0;
+    
+    // Delay based on distance from center (closer pixels animate first)
     if (this.counter <= this.delay) {
       this.counter += this.counterStep;
       return;
     }
+    
+    // Once we reach max size, switch to shimmer mode
     if (this.size >= this.maxSize) {
       this.isShimmer = true;
     }
+    
+    // Either grow the pixel or make it shimmer
     if (this.isShimmer) {
       this.shimmer();
     } else {
       this.size += this.sizeStep;
     }
+    
     this.draw();
   }
 
   disappear(): void {
-    this.isShimmer = false;
+    this.isIdle = false;
+    this.isDisappearing = true;
+    
+    // Reset the counter used for appear animation
     this.counter = 0;
-    if (this.size <= 0) {
-      this.isIdle = true;
+    
+    // For disappearing, pixels further from center start disappearing first
+    // Reduce the delay by 40% to speed up the start of disappearing animation
+    if (this.disappearCounter <= this.disappearDelay * 0.6) {
+      this.disappearCounter += this.counterStep * 1.5; // Faster counter increment
+      
+      // Continue shimmering while waiting to disappear
+      if (this.isShimmer) {
+        this.shimmer();
+        this.draw();
+      }
       return;
-    } else {
-      this.size -= 0.1;
     }
+    
+    // Once the delay is over, gradually reduce the size
+    // Keep shimmering during the early stages of disappearing
+    if (this.size > this.minSize) {
+      // Continue the shimmer effect during disappearance
+      if (this.isShimmer) {
+        this.shimmer();
+      }
+      
+      // Increase the reduction speed by increasing the factor from 0.2 to 0.35
+      this.size -= this.sizeStep * 0.5;
+    } else {
+      // When we get below the minimum size, stop shimmering and just shrink
+      this.isShimmer = false;
+      // Increase the final shrinking speed from 0.2 to 0.4
+      this.size -= this.sizeStep * 1;
+      
+      // Only mark as idle when completely gone
+      if (this.size <= 0) {
+        this.isIdle = true;
+        return;
+      }
+    }
+    
     this.draw();
   }
 
   shimmer(): void {
+    // Shimmer effect: oscillate pixel size between max and min
     if (this.size >= this.maxSize) {
       this.isReverse = true;
     } else if (this.size <= this.minSize) {
       this.isReverse = false;
     }
+    
+    // Adjust size based on direction
     if (this.isReverse) {
       this.size -= this.speed;
     } else {
       this.size += this.speed;
     }
   }
-}
 
-function getEffectiveSpeed(value: number | string, reducedMotion: boolean): number {
-  const min = 0;
-  const max = 100;
-  const throttle = 0.001;
-  const parsed = typeof value === 'string' ? parseInt(value, 10) : value;
-
-  if (parsed <= min || reducedMotion) {
-    return min;
-  } else if (parsed >= max) {
-    return max * throttle;
-  } else {
-    return parsed * throttle;
+  reset(): void {
+    // Reset all animation state for this pixel
+    this.size = 0;
+    this.counter = 0;
+    this.disappearCounter = 0;
+    this.isIdle = false;
+    this.isReverse = false;
+    this.isShimmer = false;
+    this.isDisappearing = false;
   }
 }
 
-/**
- *  Variant definitions for the pixel card
- */
 const VARIANTS = {
-  default: {
-    activeColor: null,
-    gap: 5,
-    speed: 35,
-    colors: "#f8fafc,#f1f5f9,#cbd5e1",
-    noFocus: false
-  },
   blue: {
-    activeColor: "#e0f2fe",
-    gap: 10,
-    speed: 25,
     colors: "#e0f2fe,#7dd3fc,#0ea5e9",
-    noFocus: false
-  },
-  yellow: {
-    activeColor: "#fef08a",
-    gap: 3,
-    speed: 20,
-    colors: "#fef08a,#fde047,#eab308",
-    noFocus: false
+    gap: 4,
+    speed: 80,
   },
   pink: {
-    activeColor: "#fecdd3",
-    gap: 6,
-    speed: 80,
     colors: "#fecdd3,#fda4af,#e11d48",
-    noFocus: true
+    gap: 4,
+    speed: 80,
+  },
+  purple: {
+    colors: "#ddd6fe,#a78bfa,#7c3aed",
+    gap: 4,
+    speed: 80,
+  },
+  green: {
+    colors: "#a7f3d0,#6ee7b7,#10b981",
+    gap: 4,
+    speed: 80,
   }
 };
 
-// Define types for the props
-interface PixelCardProps {
-  variant?: 'default' | 'blue' | 'yellow' | 'pink';
-  gap?: number;
-  speed?: number;
-  colors?: string;
-  noFocus?: boolean;
+type PixelCardProps = {
+  children: React.ReactNode;
+  variant?: "blue" | "pink" | "purple" | "green";
   className?: string;
-  children?: React.ReactNode;
-}
+  onClick?: () => void;
+};
 
 export default function PixelCard({
-  variant = "default",
-  gap,
-  speed,
-  colors,
-  noFocus,
+  children,
+  variant = "blue",
   className = "",
-  children
+  onClick
 }: PixelCardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const pixelsRef = useRef<IPixel[]>([]);
+  const pixelsRef = useRef<Pixel[]>([]);
   const animationRef = useRef<number | null>(null);
-  const timePreviousRef = useRef<number>(0);
+  const [animationState, setAnimationState] = useState<'idle' | 'appear' | 'disappear'>('idle');
   
-  // Fix: Replace incorrect useRef array destructuring with proper state management
-  const reducedMotionRef = useRef<boolean>(false);
-  const [isReducedMotion, setIsReducedMotion] = useState<boolean>(false);
+  // Get variant configuration
+  const variantCfg = VARIANTS[variant as keyof typeof VARIANTS] || VARIANTS.blue;
+  const finalColors = variantCfg.colors;
+  const finalGap = variantCfg.gap;
+  const finalSpeed = variantCfg.speed;
 
-  const variantCfg = VARIANTS[variant] || VARIANTS.default;
-  const finalGap = gap ?? variantCfg.gap;
-  const finalSpeed = speed ?? variantCfg.speed;
-  const finalColors = colors ?? variantCfg.colors;
-  const finalNoFocus = noFocus ?? variantCfg.noFocus;
-
-  // Initialize the reduced motion preference in useEffect to avoid SSR issues
-  useEffect(() => {
-    // Set performance now reference on client side
-    timePreviousRef.current = performance.now();
-    
-    // Check for reduced motion preference
-    if (typeof window !== "undefined") {
-      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      reducedMotionRef.current = prefersReducedMotion;
-      setIsReducedMotion(prefersReducedMotion);
-      
-      // Listen for preference changes
-      const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-      const handleChange = (e: MediaQueryListEvent) => {
-        reducedMotionRef.current = e.matches;
-        setIsReducedMotion(e.matches);
-      };
-      
-      mediaQuery.addEventListener("change", handleChange);
-      return () => mediaQuery.removeEventListener("change", handleChange);
-    }
-  }, []);
-
+  // Initialize pixels
   const initPixels = () => {
     if (!containerRef.current || !canvasRef.current) return;
 
@@ -258,125 +244,161 @@ export default function PixelCard({
     canvasRef.current.style.height = `${height}px`;
 
     const colorsArray = finalColors.split(",");
-    const pxs: IPixel[] = [];
-    for (let x = 0; x < width; x += parseInt(finalGap.toString(), 10)) {
-      for (let y = 0; y < height; y += parseInt(finalGap.toString(), 10)) {
-        const color =
-          colorsArray[Math.floor(Math.random() * colorsArray.length)];
-
-        const dx = x - width / 2;
-        const dy = y - height / 2;
+    const pxs: Pixel[] = [];
+    
+    // Calculate center point
+    const centerX = width / 2;
+    const centerY = height / 2;
+    
+    // First pass to calculate max distance for normalization
+    let maxDistance = 0;
+    const points: {x: number, y: number, distance: number}[] = [];
+    
+    for (let x = 0; x < width; x += finalGap) {
+      for (let y = 0; y < height; y += finalGap) {
+        const dx = x - centerX;
+        const dy = y - centerY;
         const distance = Math.sqrt(dx * dx + dy * dy);
-        // Use the current value of reducedMotionRef
-        const delay = reducedMotionRef.current ? 0 : distance;
-
-        pxs.push(
-          new Pixel(
-            canvasRef.current,
-            ctx,
-            x,
-            y,
-            color,
-            getEffectiveSpeed(finalSpeed, reducedMotionRef.current),
-            delay
-          )
-        );
+        maxDistance = Math.max(maxDistance, distance);
+        points.push({x, y, distance});
       }
     }
+    
+    // Second pass to create pixels with normalized distances
+    for (const point of points) {
+      const color = colorsArray[Math.floor(Math.random() * colorsArray.length)];
+      const normalizedDistance = point.distance / maxDistance;
+      
+      pxs.push(
+        new Pixel(
+          canvasRef.current,
+          ctx,
+          point.x,
+          point.y,
+          color,
+          finalSpeed * 0.001,
+          normalizedDistance
+        )
+      );
+    }
+    
     pixelsRef.current = pxs;
+    
+    // Clear the canvas
+    ctx.clearRect(0, 0, width, height);
   };
 
-  const doAnimate = (fnName: 'appear' | 'disappear') => {
-    animationRef.current = requestAnimationFrame(() => doAnimate(fnName));
-    const timeNow = performance.now();
-    const timePassed = timeNow - timePreviousRef.current;
-    const timeInterval = 1000 / 60; // ~60 FPS
-
-    if (timePassed < timeInterval) return;
-    timePreviousRef.current = timeNow - (timePassed % timeInterval);
-
-    const ctx = canvasRef.current?.getContext("2d");
-    if (!ctx || !canvasRef.current) return;
-
+  // Animation loop
+  const animate = () => {
+    if (!canvasRef.current) return;
+    
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) return;
+    
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-
+    
     let allIdle = true;
-    for (let i = 0; i < pixelsRef.current.length; i++) {
-      const pixel = pixelsRef.current[i];
-      pixel[fnName]();
+    
+    for (const pixel of pixelsRef.current) {
+      if (animationState === 'appear') {
+        pixel.appear();
+      } else if (animationState === 'disappear') {
+        pixel.disappear();
+      }
+      
       if (!pixel.isIdle) {
         allIdle = false;
       }
     }
-    if (allIdle) {
-      cancelAnimationFrame(animationRef.current);
-    }
-  };
-
-  const handleAnimation = (name: 'appear' | 'disappear') => {
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-    }
-    animationRef.current = requestAnimationFrame(() => doAnimate(name));
-  };
-
-  const onMouseEnter = () => handleAnimation("appear");
-  const onMouseLeave = () => handleAnimation("disappear");
-  const onFocus = (e: React.FocusEvent) => {
-    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-    handleAnimation("appear");
-  };
-  const onBlur = (e: React.FocusEvent) => {
-    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-    handleAnimation("disappear");
-  };
-
-  useEffect(() => {
-    // Only run on client-side
-    if (typeof window !== 'undefined') {
-      // Add slight delay to ensure proper dimensions calculation
-      setTimeout(() => {
-        initPixels();
-      }, 50);
-      
-      const observer = new ResizeObserver(() => {
-        initPixels();
-      });
-      
-      if (containerRef.current) {
-        observer.observe(containerRef.current);
+    
+    if (allIdle && animationState !== 'idle') {
+      setAnimationState('idle');
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
       }
-      
-      return () => {
-        observer.disconnect();
-        if (animationRef.current) {
-          cancelAnimationFrame(animationRef.current);
-        }
-      };
+    } else {
+      animationRef.current = requestAnimationFrame(animate);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [finalGap, finalSpeed, finalColors, finalNoFocus, isReducedMotion]);
+  };
+
+  // Start or stop animation based on state
+  useEffect(() => {
+    if (animationState !== 'idle') {
+      if (!animationRef.current) {
+        animationRef.current = requestAnimationFrame(animate);
+      }
+    } else {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+    }
+    
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+        animationRef.current = null;
+      }
+    };
+  }, [animationState]);
+
+  // Reset for animation direction change
+  useEffect(() => {
+    if (animationState === 'appear') {
+      // Reset pixels for a clean start when appearing
+      for (const pixel of pixelsRef.current) {
+        if (pixel.isDisappearing) {
+          pixel.reset();
+        }
+      }
+    }
+  }, [animationState]);
+
+  // Initialize on mount and handle resizing
+  useEffect(() => {
+    initPixels();
+    
+    const observer = new ResizeObserver(() => {
+      initPixels();
+    });
+    
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+    
+    return () => {
+      observer.disconnect();
+    };
+  }, [finalGap, finalColors, finalSpeed]);
+
+  // Event handlers
+  const onMouseEnter = () => {
+    setAnimationState('appear');
+  };
+  
+  const onMouseLeave = () => {
+    setAnimationState('disappear');
+  };
 
   return (
     <div
       ref={containerRef}
-      className={`relative overflow-hidden grid place-items-center border border-[#27272a] rounded-[25px] isolate transition-colors duration-200 ease-[cubic-bezier(0.5,1,0.89,1)] select-none ${className}`}
-      style={{ 
-        aspectRatio: "auto", 
-        minHeight: "250px", 
-        minWidth: "500px" 
-      }}
+      className={cn(
+        "relative border border-white/10 rounded-xl overflow-hidden h-full w-full",
+        className
+      )}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      onFocus={finalNoFocus ? undefined : onFocus}
-      onBlur={finalNoFocus ? undefined : onBlur}
-      tabIndex={finalNoFocus ? -1 : 0}
+      onClick={onClick}
     >
       <canvas
-        className="w-full h-full block"
+        className="absolute inset-0 w-full h-full block z-0"
         ref={canvasRef}
       />
-      {children}
+      <div className="relative z-10 p-4 h-full w-full flex items-center justify-center">
+        {children}
+      </div>
     </div>
   );
 }

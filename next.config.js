@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: false,
+  reactStrictMode: true,
+  swcMinify: true,
   poweredByHeader: false,
   images: {
     remotePatterns: [
@@ -10,6 +11,7 @@ const nextConfig = {
         pathname: '/**',
       },
     ],
+    domains: ['images.unsplash.com'],
   },
   webpack: (config, { dev }) => {
     // Development optimizations
@@ -22,6 +24,6 @@ const nextConfig = {
     
     return config;
   },
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;

@@ -26,7 +26,9 @@ const inter = Inter({
 });
 
 // Use the existing environment variable from .env.local
-const BACKEND_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const VERCEL_HOSTED = process.env.NEXT_PUBLIC_VERCEL_HOSTED === 'true';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const BACKEND_API_URL = VERCEL_HOSTED ? 'http://localhost:5000' : API_URL;
 
 // Add elegant shapes for visual consistency with home page
 function ElegantShape({

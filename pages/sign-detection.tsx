@@ -521,6 +521,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
     setCapturing(false);
   };
 
+  // Send video for processing with flexible API URL based on hosting environment
   const sendVideoForProcessing = React.useCallback(async (videoBlob: Blob) => {
     try {
       setPrediction("Processing video...");
@@ -530,10 +531,12 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-      // Use environment variable for API URL
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"; // Fallback to localhost if not set
+      // Use environment variables for API URL with VERCEL_HOSTED consideration
+      const VERCEL_HOSTED = process.env.NEXT_PUBLIC_VERCEL_HOSTED === 'true';
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const BACKEND_API_URL = VERCEL_HOSTED ? 'http://localhost:5000' : API_URL;
 
-      const response = await fetch(`${apiUrl}/predict`, { // Use the apiUrl variable
+      const response = await fetch(`${BACKEND_API_URL}/predict`, {
         method: "POST",
         body: formData,
         signal: controller.signal,
@@ -557,9 +560,9 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
         setCapturing(false);
 
         if (responseData.audio_url) {
-          // Use environment variable for audio URL as well
+          // Use the same API URL for audio as well
           const audio = new Audio(
-            `${apiUrl}${responseData.audio_url}?t=${Date.now()}` // Use the apiUrl variable
+            `${BACKEND_API_URL}${responseData.audio_url}?t=${Date.now()}`
           );
           void audio.play().catch(console.error);
         }

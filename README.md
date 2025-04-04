@@ -35,8 +35,8 @@ SignEase is an AI-powered Indian Sign Language Recognition system that utilizes 
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/your-username/signease.git
-cd signease
+git clone https://github.com/pavannn16/ISLRv6.git
+cd ISLRv6
 ```
 
 2. **Install frontend dependencies**
@@ -102,9 +102,12 @@ Open `backend.py` in your editor and locate the model path constants (usually ne
 
 ```python
 # Model and data paths
-MODEL_DIR = "backend_data/models"
-DATA_DIR = "backend_data/data"
-TEMP_DIR = "backend_data"
+# Model and Data Paths (Ensure these are correct)
+DUMMY_PARQUET_SKEL_FILE = Path('.../ISLRv6/backend_data/data/239181.parquet')
+TFLITE_MODEL_PATH = Path('.../ISLRversions/ISLRv6/backend_data/models/asl_model.tflite')
+CSV_FILE_PATH = Path('.../ISLRv6/backend_data/data/train.csv')
+CAPTURED_PARQUET_FILE = Path('.../ISLRv6/backend_data/shammers.parquet')
+
 ```
 
 Adjust these paths according to your directory structure if needed. Make sure:

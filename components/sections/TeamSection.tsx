@@ -1,7 +1,7 @@
 // components/sections/TeamSection.tsx
 "use client"
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { motion, useInView } from "framer-motion";
 import Image from "next/image";
 import { FaLinkedin } from 'react-icons/fa';
@@ -30,6 +30,16 @@ const TeamSection: React.FC<TeamSectionProps> = ({ contentReady }) => {
     once: true,
     amount: 0.1,
   });
+
+  // Add state for shadow mode
+  const [isShadowMode, setIsShadowMode] = useState(false);
+
+  // Check for shadow mode from environment variable when component mounts
+  useEffect(() => {
+    const shadowMode = process.env.NEXT_PUBLIC_SHADOW_MODE === 'true';
+    setIsShadowMode(shadowMode);
+    console.log("Shadow mode:", shadowMode);
+  }, []);
 
   return (
     <section id="team" className="relative py-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto bg-transparent">
@@ -77,7 +87,7 @@ const TeamSection: React.FC<TeamSectionProps> = ({ contentReady }) => {
           </motion.p>
         </div>
 
-        <div className="flex flex-col md:flex-row justify-center gap-12 mt-6 relative z-0">
+        <div className={`flex flex-col ${!isShadowMode ? 'md:flex-row' : ''} justify-center gap-12 mt-6 relative z-0`}>
           <motion.div
             custom={8}
             variants={fadeUpVariants}
@@ -85,7 +95,7 @@ const TeamSection: React.FC<TeamSectionProps> = ({ contentReady }) => {
             animate={contentReady ? "visible" : "hidden"}
             whileHover={{ scale: 1.05 }}
             transition={{ duration: 0.2 }}
-            className="bg-white/[0.03] border border-white/[0.08] p-8 rounded-xl  transition-all"
+            className="bg-white/[0.03] border border-white/[0.08] p-8 rounded-xl transition-all"
           >
             <div className="w-48 h-48 rounded-full bg-gradient-to-br from-indigo-500/20 to-rose-500/20 mb-6 mx-auto overflow-hidden">
               <Image src="/assets/pavanpfp.jpeg" alt="Pavan Chauhan" width={192} height={192} className="object-cover w-full h-full" />
@@ -106,34 +116,38 @@ const TeamSection: React.FC<TeamSectionProps> = ({ contentReady }) => {
               </motion.a>
             </div>
           </motion.div>
-          <motion.div
-            custom={9}
-            variants={fadeUpVariants}
-            initial="hidden"
-            animate={contentReady ? "visible" : "hidden"}
-            whileHover={{ scale: 1.05 }}
-            transition={{ duration: 0.2 }}
-            className="bg-white/[0.03] border border-white/[0.08] p-8 rounded-xl transition-all"
-          >
-            <div className="w-48 h-48 rounded-full bg-gradient-to-br from-indigo-500/20 to-rose-500/20 mb-6 mx-auto overflow-hidden">
-              <Image src="/assets/poojapfp.jpeg" alt="Pooja Ramani" width={192} height={192} className="object-cover w-full h-full" />
-            </div>
-            <h4 className="text-xl font-semibold text-center mb-2">
-              Pooja Ramani
-            </h4>
-            <p className="text-center text-white/40">3rd Year Computer Engineering Grad, Deployment Expert, Software Development Core</p>
-            <div className="flex justify-center mt-4">
-              <motion.a
-                href="https://www.linkedin.com/in/poojaramani/"
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ scale: 1.2, color: "#0077B5" }}
-                className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center transition-all"
-              >
-                <FaLinkedin className="text-xl text-white/80" />
-              </motion.a>
-            </div>
-          </motion.div>
+          
+          {/* Only show Pooja's information if not in shadow mode */}
+          {!isShadowMode && (
+            <motion.div
+              custom={9}
+              variants={fadeUpVariants}
+              initial="hidden"
+              animate={contentReady ? "visible" : "hidden"}
+              whileHover={{ scale: 1.05 }}
+              transition={{ duration: 0.2 }}
+              className="bg-white/[0.03] border border-white/[0.08] p-8 rounded-xl transition-all"
+            >
+              <div className="w-48 h-48 rounded-full bg-gradient-to-br from-indigo-500/20 to-rose-500/20 mb-6 mx-auto overflow-hidden">
+                <Image src="/assets/poojapfp.jpeg" alt="Pooja Ramani" width={192} height={192} className="object-cover w-full h-full" />
+              </div>
+              <h4 className="text-xl font-semibold text-center mb-2">
+                Pooja Ramani
+              </h4>
+              <p className="text-center text-white/40">3rd Year Computer Engineering Grad, Deployment Expert, Software Development Core</p>
+              <div className="flex justify-center mt-4">
+                <motion.a
+                  href="https://www.linkedin.com/in/poojaramani/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.2, color: "#0077B5" }}
+                  className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center transition-all"
+                >
+                  <FaLinkedin className="text-xl text-white/80" />
+                </motion.a>
+              </div>
+            </motion.div>
+          )}
         </div>
       </motion.div>
     </section>

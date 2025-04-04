@@ -3,6 +3,10 @@
 <div align="center">
   <img src="public/assets/SignEaseLogo.png" alt="SignEase Logo" width="120" />
   <h3>Bridging communication gaps through AI-powered sign language recognition</h3>
+  <p>
+    <a href="https://pavanchauhan.tech" target="_blank">Live Demo</a> • 
+    <a href="https://github.com/pavannn16/ISLRv6" target="_blank">GitHub Repository</a>
+  </p>
 </div>
 
 ## 📖 Overview
@@ -90,7 +94,25 @@ NEXT_PUBLIC_API_URL=http://192.168.0.101:5000
 NEXT_PUBLIC_VERCEL_HOSTED=false
 ```
 
-### 3. Start the Backend Server
+### 3. Configure Model Paths
+
+Before starting the backend server, you might need to adjust the paths to model data in `backend.py`:
+
+Open `backend.py` in your editor and locate the model path constants (usually near the top of the file):
+
+```python
+# Model and data paths
+MODEL_DIR = "backend_data/models"
+DATA_DIR = "backend_data/data"
+TEMP_DIR = "backend_data"
+```
+
+Adjust these paths according to your directory structure if needed. Make sure:
+- The TensorFlow model file (`.tflite`) is in the specified MODEL_DIR
+- The training data and reference files are in DATA_DIR
+- The TEMP_DIR exists and is writable for temporary files
+
+### 4. Start the Backend Server
 
 ```bash
 python backend.py
@@ -98,7 +120,7 @@ python backend.py
 
 The backend server will start on port 5000.
 
-### 4. Start the Frontend Development Server
+### 5. Start the Frontend Development Server
 
 ```bash
 npm run dev
@@ -309,7 +331,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 📬 Contact
 
-Project Link: [https://github.com/your-username/signease](https://github.com/your-username/signease)
+- **Website**: [https://pavanchauhan.tech](https://pavanchauhan.tech)
+- **Project Repository**: [https://github.com/pavannn16/ISLRv6](https://github.com/pavannn16/ISLRv6)
 
 ---
 

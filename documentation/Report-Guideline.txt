@@ -1,0 +1,355 @@
+REPORT FORMATING
+
+Page Size
+
+A4 (210mm X 297mm)
+
+Margin
+
+Left
+:
+Right :
+Top
+:
+Bottom :
+
+Font
+
+Chapter title
+Section title
+Sub Section title
+Regular text
+Special text
+
+: 16pt
+: 14pt
+: 12pt
+: 12pt
+: 12pt
+
+Text
+Charts, Figures etc.
+
+: Black
+: can be color
+
+Color
+
+1.25 inch
+1.0 inch
+1.0 inch
+1.0 inch
+Times New Roman
+Times New Roman
+Times New Roman
+Times New Roman
+Times New Roman
+
+Bold
+Bold
+Bold
+Italics
+
+Capital
+Capital
+Sentence Case
+
+Spacing
+
+Regular text
+Between paragraph
+Section title
+Table and caption
+Figure and caption
+Bullets
+
+:
+:
+:
+:
+:
+:
+
+Alignment
+
+Regular text, title
+Figure and caption
+Table and caption
+
+: Justify
+: Center
+: Center
+
+Caption
+
+Figure
+
+Table
+Equation
+
+1.5
+double
+double
+double
+double
+single
+
+: below the figure as per below given format
+Fig <chapternumber>.1. name of the figure
+: Above the table as per below given format
+Table <chapternumber>.1. name of the figure
+: Right side of the equation as per below given format
+(Eq. <chapternumber>.1)
+
+Binding
+
+Hardbound ( color black with golden embossing )
+
+No. of copy
+
+Number of student in group + 1 department copy
+All copies must be identical
+
+Numbering
+
+Chapter title
+Section
+Sub sections
+
+: 1, 2 , 3 …
+: 1.1, 1.2, 1.3 …
+: 1.1.1, 1.1.2, 1.1.3 …
+
+Section Flow
+1 : Cover Page
+2 : First Page
+3 : Candidate Declaration
+4 : Company Certificate
+5 : College Certificate
+6 : Abstract
+7 : Acknowledgement
+8 : Table of Content
+9 : List of Figure
+10 : List of Tables
+11 : Chapters
+12 : Appendix
+13 : Bibliography
+14 : Plagiarism report (must be <35% overall , <2% from single source)
+15 : Research paper publication detail (if any in case of research project project)
+
+Section Flow
+
+Header & Footer
+
+Top-Left
+1 : Cover Page
+2 : First Page
+Project ID
+NOT
+3 : Candidate Declaration
+ON
+4 : Company Certificate
+Bottom-Left
+5 : College Certificate
+CSPIT
+6 : Abstract
+7 : Acknowledgement
+Bottom-Right
+8 : Table of Content
+U & P U. Patel Department of Computer Engineering
+9 : List of Figure
+10 : List of Tables
+11 : Chapters
+12 : Appendix
+13 : Bibliography
+14 : Plagiarism report (must be <35% overall , <2% from single source)
+15 : Research paper publication detail (if any in case of research project project)
+
+Section Flow
+
+Header & Footer
+
+Top-Right
+1 : Cover Page
+2 : First Page
+Chapter Title
+3 : Candidate Declaration
+4 : Company Certificate
+5 : College Certificate
+NOT
+ON
+6 : Abstract
+7 : Acknowledgement
+8 : Table of Content
+9 : List of Figure
+10 : List of Tables
+11 : Chapters
+12 : Appendix
+13 : Bibliography
+NOT
+ON
+14 : Plagiarism report (must be <35% overall , <2% from single source)
+15 : Research paper publication detail (if any in case of research project project)
+
+Section Flow
+
+Header & Footer
+
+Bottom-Center
+1 : Cover Page
+2 : First Page
+Page Number
+NOT
+3 : Candidate Declaration
+ON
+4 : Company Certificate
+5 : College Certificate
+6 : Abstract
+7 : Acknowledgement
+Roman numbers vi onwards
+8 : Table of Content
+9 : List of Figure
+10 : List of Tables
+11 : Chapters
+Numbers 1 onwards
+12 : Appendix
+13 : Bibliography
+14 : Plagiarism report (must be <35% overall , <2% from single source)
+15 : Research paper publication detail (if any in case of research project project)
+
+CHAPTERS
+DEVELOPMENT PROJECT
+
+Chapter 1 : Introduction
+1.1 Project Summary
+
+1.2 Purpose
+1.3 Objective
+1.4 Scope
+1.5 Technology and Literature Review
+
+Chapter 2 : Project Management
+2.1 Project Planning
+
+2.1.1 Project Development Approach and Justification
+2.1.2 Project Effort and Time, Cost Estimation
+2.1.3 Roles and Responsibilities
+2.1.4 Group Dependencies
+2.2 Project Scheduling
+
+Chapter 3 : System Requirements Study
+3.1 User Characteristics
+
+3.2 Hardware and Software Requirements
+3.3 Assumptions and Dependencies
+
+Chapter 4 : System Analysis
+4.1 Study of Current System
+
+4.2 Problem and Weaknesses of Current System
+4.3 Requirements of New System
+4.3.1 Functional Requirements
+4.3.2 Non Functional Requirements
+
+Chapter 4 : System Analysis
+4.4 Feasibility Study
+
+4.4.1 Does the system contribute to the overall objectives of the organization?
+4.4.2 Can the system be implemented using the current technology and within the
+given cost and schedule constraints?
+4.4.3 Can the system be integrated with other systems which are already in place?
+4.5 Activity/Process in New System
+4.6 Feature of New System
+
+Chapter 4 : System Analysis
+4.7 Use Case Diagram
+
+4.7 Functions of System
+
+4.8 Class Diagram
+
+4.8 Context Diagram (DFD-0)
+
+4.9 Sequence Diagram
+
+4.9 DFD – 1 and DFD – 2
+4.10 Data Modeling
+
+4.10.1 ER Diagram
+4.10.2 Data Dictionary
+4.11 Modules of New System
+OOP Approach
+
+Procedural Approach
+
+Chapter 5 : System Design
+5.1 System Application Design
+
+5.1.1 Method Pseudo Code
+5.2 Input/Output and Interface Design
+5.2.1 Samples of Forms, Reports and Interface
+
+5.2.2 State Diagram
+
+5.2.2 Access Control and Security
+5.3 System Structural Design
+
+OOP Approach
+
+Procedural Approach
+
+Chapter 6 : Implementation Planning
+6.1 Implementation Environment
+
+6.2 Modules Specification
+6.3 Security Features
+6.4 Coding Standard
+
+Chapter 7 : Testing
+7.1 Testing Plan
+
+7.2 Testing Strategy
+7.3 Test Suites Design
+
+Chapter 8 : Conclusion and Discussion
+8.1 Self Analysis of Project Viabilities
+
+8.2 Problem Encountered and Possible Solutions
+8.3 Summary of Project Work
+
+Chapter 9 : Limitation and Future Enhancement
+
+CHAPTERS
+RESEARCH PROJECT
+
+Chapter 1 : Introduction
+1.1 Introduction
+
+1.2 Research Definition
+1.3 Problem Description
+1.4 Motivation
+1.5 Scope and Objectives
+1.6 Planning
+
+1.7 Organization of Thesis
+
+Chapter 2 : Literature Review & Comparative study
+2.1 Evolution of the topic
+
+2.2 Background Study (Theoretical and Mathematical Background)
+2.3 Review Previous Research Findings
+2.4 Comparative Study
+2.5 Open Issues (Research Gaps)
+
+Chapter 3 : Experimentation/simulation/ Lab Set Up
+Chapter 4 : Proposed Hypothesis/ Model/ Algorithm
+4.1 Algorithm
+4.2 Unified Modeling and Visual Representation of the system
+
+4.3 Implementation Details
+4.4 Complexity Analysis, UML Models
+
+Chapter 5 : Results and Discussion on Results
+Chapter 6 : Conclusion
+
+

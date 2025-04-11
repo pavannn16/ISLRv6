@@ -20,3 +20,17 @@ Change the dropdown from "Disabled" to "Enabled"
 Click "Relaunch" to restart Chrome
 
 When you visit the site again, you should be able to grant camera permissions
+
+# Commands for specific Node.js and Next.js versions
+# Ensure you are using a compatible Node.js version (e.g., 16.x or 18.x) and Next.js version 14.x
+
+# Install Node.js on macOS
+brew install node@16
+brew link --overwrite node@16
+
+# Install Node.js on Linux
+curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Install Next.js globally (optional, for development convenience)
+npm install -g next@14

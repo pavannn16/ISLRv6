@@ -28,16 +28,16 @@ CORS(app, resources={r"/*": {"origins": "*", "supports_credentials": True}})
 
 # --- Configuration ---
 UPLOAD_FOLDER = Path("saved_videos")
-VISUALIZER_OUTPUT_DIR = Path("/Users/pavan/Downloads/ISLRversions/ISLRv6/public/Visualiser/") # Ensure this path is correct
+VISUALIZER_OUTPUT_DIR = Path("/home/pavan/MLProjects/ISLRversions/ISLRv6/public/Visualiser/") # Ensure this path is correct
 CAPTURED_VIDEO_FILENAME = "captured_video.mp4"
 CAPTURED_VIDEO_PATH = UPLOAD_FOLDER / CAPTURED_VIDEO_FILENAME
 TEMP_VIDEO_PATH = UPLOAD_FOLDER / "temp_video_upload" # Temporary path for initial upload
 
 # Model and Data Paths (Ensure these are correct)
-DUMMY_PARQUET_SKEL_FILE = Path('/Users/pavan/Downloads/ISLRversions/ISLRv6/backend_data/data/239181.parquet')
-TFLITE_MODEL_PATH = Path('/Users/pavan/Downloads/ISLRversions/ISLRv6/backend_data/models/asl_model.tflite')
-CSV_FILE_PATH = Path('/Users/pavan/Downloads/ISLRversions/ISLRv6/backend_data/data/train.csv')
-CAPTURED_PARQUET_FILE = Path('/Users/pavan/Downloads/ISLRversions/ISLRv6/backend_data/shammers.parquet') # Output for prediction model
+DUMMY_PARQUET_SKEL_FILE = Path('/home/pavan/MLProjects/ISLRv6/backend_data/data/239181.parquet')
+TFLITE_MODEL_PATH = Path('/home/pavan/MLProjects/ISLRv6/backend_data/models/asl_model.tflite')
+CSV_FILE_PATH = Path('/home/pavan/MLProjects/ISLRv6/backend_data/data/train.csv')
+CAPTURED_PARQUET_FILE = Path('/home/pavan/MLProjects/ISLRv6/backend_data/shammers.parquet') # Output for prediction model
 
 # --- Initialization ---
 logging.info("Initializing backend...")

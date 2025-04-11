@@ -1,4 +1,4 @@
-# venv path ~/PythonVenv/ISLRmain/bin/python
+# venv path source /home/pavan/MLProjects/PythonVenv/SigneaseENV/bin/activate
 import cv2
 import mediapipe as mp
 import pandas as pd

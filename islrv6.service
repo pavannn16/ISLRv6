@@ -1,0 +1,18 @@
+[Unit]
+Description=ISLRv6 Gunicorn Service
+After=network.target
+
+[Service]
+User=pavan
+Group=pavan
+WorkingDirectory=/home/pavan/MLProjects/ISLRv6
+Environment="PATH=/home/pavan/MLProjects/PythonVenv/SigneaseENV/bin"
+ExecStart=/home/pavan/MLProjects/PythonVenv/SigneaseENV/bin/gunicorn --config /home/pavan/MLProjects/ISLRv6/gunicorn_config.py jetson.jet_back:app
+Restart=always
+RestartSec=5
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=islrv6
+
+[Install]
+WantedBy=multi-user.target

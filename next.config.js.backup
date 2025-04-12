@@ -16,7 +16,8 @@ const nextConfig = {
         pathname: '/**',
       },
     ],
-    unoptimized: true, // Disable image optimization
+    // Using remotePatterns instead of domains (which is deprecated)
+    // domains: ['images.unsplash.com'],
   },
   // Production optimizations
   compiler: {
@@ -24,11 +25,11 @@ const nextConfig = {
   },
   // Optimize build output
   output: 'standalone',
-  // Disable experimental features
+  // Optimize page loading
   experimental: {
-    // Disable features that require network
-    optimizeCss: false,
-    optimizePackageImports: [],
+    // Disable optimizeCss to avoid font download issues
+    // optimizeCss: true,
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
   webpack: (config, { dev, isServer }) => {
     // Development optimizations
@@ -38,23 +39,40 @@ const nextConfig = {
         aggregateTimeout: 300,
       };
     }
-    
-    // Simple production optimizations
+
+    // Production optimizations
     if (!dev && !isServer) {
+      // Enable tree shaking and dead code elimination
+      config.optimization.usedExports = true;
+
+      // Use a simpler and more robust chunk splitting strategy
       config.optimization.splitChunks = {
         chunks: 'all',
+        maxInitialRequests: 25,
+        minSize: 20000,
         cacheGroups: {
-          default: false,
-          vendors: false,
+          framework: {
+            name: 'framework',
+            test: /[\\/]node_modules[\\/](@next|next|react|react-dom)[\\/]/,
+            priority: 40,
+            chunks: 'all',
+            enforce: true,
+          },
+          lib: {
+            test: /[\\/]node_modules[\\/]/,
+            name: 'lib',
+            priority: 30,
+            chunks: 'all',
+          },
           commons: {
             name: 'commons',
-            chunks: 'all',
             minChunks: 2,
+            priority: 20,
           },
         },
       };
     }
-    
+
     return config;
   },
 };

@@ -25,9 +25,22 @@ from flask_cors import CORS
 from gtts import gTTS
 import logging
 import json
+import dotenv
 
 # Setup basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Load environment variables from .env.local file
+try:
+    dotenv.load_dotenv(dotenv_path=Path('../.env.local'))
+    # Also try current directory in case script is run from project root
+    dotenv.load_dotenv(dotenv_path=Path('.env.local'))
+except Exception as e:
+    logging.warning(f"Could not load .env.local file: {e}")
+
+# Check if we're in production build mode
+PRODUCTION_BUILD = os.environ.get('PRODUCTION_BUILD', 'false').lower() == 'true'
+logging.info(f"Running in {'production' if PRODUCTION_BUILD else 'development'} mode")
 
 app = Flask(__name__)
 # Configure CORS to allow requests from any origin with credentials support
@@ -1415,6 +1428,22 @@ def get_visualization_video(filename):
 
 
 if __name__ == "__main__":
+    if PRODUCTION_BUILD:
+        logging.info("PRODUCTION_BUILD=true detected, but script was run directly.")
+        logging.info("For production mode, use Gunicorn with SSL: gunicorn --config gunicorn_config.py jetson.jet_back:app")
+        logging.info("Falling back to development server...")
+        logging.info("To run in true development mode, set PRODUCTION_BUILD=false in .env.local")
+    else:
+        logging.info("Running in development mode with Flask development server")
+        logging.info("For production mode with HTTPS, set PRODUCTION_BUILD=true in .env.local")
+        logging.info("and use Gunicorn: gunicorn --config gunicorn_config.py jetson.jet_back:app")
+
+    # Get IP address for better logging
+    import socket
+    hostname = socket.gethostname()
+    ip_address = socket.gethostbyname(hostname)
+    logging.info(f"Server running at: http://{ip_address}:5000")
+
     logging.info("Starting Flask development server...")
     # IMPORTANT: For production, use a proper WSGI server like Gunicorn or uWSGI
     # Example: gunicorn --workers 4 --threads 2 --bind 0.0.0.0:5000 backend:app

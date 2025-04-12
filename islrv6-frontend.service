@@ -1,0 +1,18 @@
+[Unit]
+Description=ISLRv6 Frontend Service with HTTPS
+After=network.target
+
+[Service]
+User=pavan
+Group=pavan
+WorkingDirectory=/home/pavan/MLProjects/ISLRv6
+ExecStart=/usr/bin/npm run start-https
+Restart=always
+RestartSec=5
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=islrv6-frontend
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

@@ -29,8 +29,23 @@ brew install node@16
 brew link --overwrite node@16
 
 # Install Node.js on Linux
+
+# For Node.js 16 (deprecated)
 curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
 sudo apt-get install -y nodejs
+
+# For Node.js 20 LTS (recommended)
+# First uninstall existing Node.js
+sudo apt-get remove -y nodejs nodejs-doc
+sudo apt-get purge -y nodejs
+sudo apt-get autoremove -y
+
+# Then install Node.js 20
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Verify installation
+node --version
 
 # Install Next.js globally (optional, for development convenience)
 npm install -g next@14

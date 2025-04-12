@@ -2,7 +2,15 @@
 import cv2
 import mediapipe as mp
 import pandas as pd
-import tensorflow.lite as tflite
+# Using ai_edge_litert instead of tensorflow.lite (which is deprecated)
+try:
+    from ai_edge_litert.interpreter import Interpreter as LiteRTInterpreter
+    USE_LITERT = True
+    import tensorflow.lite as tflite  # Keep for fallback
+except ImportError:
+    import tensorflow.lite as tflite
+    USE_LITERT = False
+    print("Warning: ai_edge_litert not available, using deprecated tensorflow.lite")
 import numpy as np
 import os
 import threading
@@ -16,7 +24,6 @@ from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from gtts import gTTS
 import logging
-import math
 import json
 
 # Setup basic logging
@@ -32,6 +39,7 @@ VISUALIZER_OUTPUT_DIR = Path("/home/pavan/MLProjects/ISLRversions/ISLRv6/public/
 CAPTURED_VIDEO_FILENAME = "captured_video.mp4"
 CAPTURED_VIDEO_PATH = UPLOAD_FOLDER / CAPTURED_VIDEO_FILENAME
 TEMP_VIDEO_PATH = UPLOAD_FOLDER / "temp_video_upload" # Temporary path for initial upload
+AUDIO_OUTPUT_PATH = UPLOAD_FOLDER / "output.mp3" # Path for generated audio file
 
 # Model and Data Paths (Ensure these are correct)
 DUMMY_PARQUET_SKEL_FILE = Path('/home/pavan/MLProjects/ISLRv6/backend_data/data/239181.parquet')
@@ -68,12 +76,20 @@ except Exception as e:
 
 # Load TFLite Model
 try:
-    interpreter = tflite.Interpreter(model_path=str(TFLITE_MODEL_PATH))
-    interpreter.allocate_tensors()
-    prediction_fn = interpreter.get_signature_runner("serving_default")
-    logging.info("TFLite model loaded successfully.")
+    if USE_LITERT:
+        # Use the new LiteRT API
+        interpreter = LiteRTInterpreter(model_path=str(TFLITE_MODEL_PATH))
+        interpreter.allocate_tensors()
+        prediction_fn = interpreter.get_signature_runner("serving_default")
+        logging.info("LiteRT model loaded successfully.")
+    else:
+        # Fallback to deprecated TFLite API
+        interpreter = tflite.Interpreter(model_path=str(TFLITE_MODEL_PATH))
+        interpreter.allocate_tensors()
+        prediction_fn = interpreter.get_signature_runner("serving_default")
+        logging.info("TFLite model loaded successfully.")
 except Exception as e:
-    logging.error(f"Failed to load TFLite model: {e}", exc_info=True)
+    logging.error(f"Failed to load model: {e}", exc_info=True)
     exit(1) # Critical error, exit
 
 # Load Sign Label Mappings
@@ -329,7 +345,7 @@ class MediaPipeBatchProcessor:
 
         # Get frame count and set target duration
         frame_count = len(self.all_frames)
-        
+
         # IMPORTANT: Prioritize the explicitly provided recording duration over calculated ones
         if self.recording_duration is not None:
             target_duration = self.recording_duration
@@ -340,32 +356,70 @@ class MediaPipeBatchProcessor:
             if cap.isOpened():
                 orig_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
                 orig_fps = cap.get(cv2.CAP_PROP_FPS)
-                if orig_fps <= 0: 
+                if orig_fps <= 0:
                     orig_fps = 30  # Default if not detected
                 original_duration = orig_frame_count / orig_fps
                 cap.release()
             else:
                 original_duration = frame_count / self.fps  # Fallback to using frame count and frame rate
-            
+
             # Ensure minimum duration is respected
             min_duration = 1.0  # Minimum 1 second video
             target_duration = max(original_duration, min_duration)
             logging.info(f"Calculated target duration: {target_duration}s (no client duration provided)")
-        
+
         # Calculate target FPS based on frame count and target duration
         target_fps = frame_count / target_duration
         logging.info(f"Video timing: frames={frame_count}, target_duration={target_duration:.2f}s, target_fps={target_fps:.2f}")
-        
-        # Use H.264 codec with specific parameters for cross-platform compatibility
-        fourcc = cv2.VideoWriter_fourcc(*'avc1')  # H.264
 
-        # Create VideoWriters with target FPS for consistent playback
-        original_video = cv2.VideoWriter(str(original_video_path), fourcc, target_fps, 
-                                       (self.width, self.height))
-        landmarks_overlay_video = cv2.VideoWriter(str(landmarks_overlay_path), fourcc, target_fps,
-                                                (self.width, self.height))
-        landmarks_only_video = cv2.VideoWriter(str(landmarks_only_path), fourcc, target_fps,
-                                             (self.width, self.height))
+        # Try different codecs in order of preference for better compatibility on Jetson
+        codecs_to_try = [
+            ('avc1', '.mp4'),  # H.264
+            ('mp4v', '.mp4'),  # MPEG-4
+            ('MJPG', '.avi'),  # Motion JPEG
+            ('XVID', '.avi')   # XVID
+        ]
+
+        # Initialize VideoWriters as None
+        original_video = None
+        landmarks_overlay_video = None
+        landmarks_only_video = None
+
+        # Try each codec until one works
+        for codec, _ in codecs_to_try:
+            try:
+                logging.info(f"Trying visualization codec: {codec}")
+                fourcc = cv2.VideoWriter_fourcc(*codec)
+
+                # Create VideoWriters with target FPS for consistent playback
+                original_video = cv2.VideoWriter(str(original_video_path), fourcc, target_fps,
+                                              (self.width, self.height))
+                landmarks_overlay_video = cv2.VideoWriter(str(landmarks_overlay_path), fourcc, target_fps,
+                                                       (self.width, self.height))
+                landmarks_only_video = cv2.VideoWriter(str(landmarks_only_path), fourcc, target_fps,
+                                                    (self.width, self.height))
+
+                # Check if all VideoWriters are opened successfully
+                if original_video.isOpened() and landmarks_overlay_video.isOpened() and landmarks_only_video.isOpened():
+                    logging.info(f"Successfully created visualization videos with codec: {codec}")
+                    break
+                else:
+                    # Close any writers that might have opened
+                    if original_video.isOpened():
+                        original_video.release()
+                    if landmarks_overlay_video.isOpened():
+                        landmarks_overlay_video.release()
+                    if landmarks_only_video.isOpened():
+                        landmarks_only_video.release()
+                    logging.warning(f"Failed to open all VideoWriters with codec {codec}, trying next codec")
+            except Exception as e:
+                logging.error(f"Error creating VideoWriters with codec {codec}: {e}")
+                continue
+
+        # Check if any codec worked
+        if not (original_video and original_video.isOpened()):
+            logging.error("Failed to create visualization videos with any codec")
+            return None
 
         # Use Queues for potentially faster I/O writing in separate threads
         # Adjust maxsize based on memory/performance trade-off
@@ -378,6 +432,18 @@ class MediaPipeBatchProcessor:
 
         # --- Define writer_thread using the corrected 'except Empty:' ---
         def writer_thread(video_writer, frame_queue):
+            # Check if video writer is valid
+            if video_writer is None or not video_writer.isOpened():
+                logging.error("Writer thread received invalid video writer")
+                # Empty the queue to prevent blocking
+                while not frame_queue.empty():
+                    try:
+                        frame_queue.get_nowait()
+                        frame_queue.task_done()
+                    except:
+                        pass
+                return
+
             logging.debug(f"Writer thread started for {video_writer}")
             while not stop_event.is_set() or not frame_queue.empty():
                 try:
@@ -391,7 +457,14 @@ class MediaPipeBatchProcessor:
                 except Exception as e:
                     logging.error(f"Error in writer thread: {e}", exc_info=True)
                     # Potentially signal main thread or stop processing?
-            video_writer.release()
+
+            # Make sure to release the video writer
+            try:
+                if video_writer and video_writer.isOpened():
+                    video_writer.release()
+            except Exception as e:
+                logging.error(f"Error releasing video writer: {e}")
+
             logging.debug(f"Writer thread finished for {video_writer}")
 
 
@@ -410,35 +483,48 @@ class MediaPipeBatchProcessor:
              logging.warning("No processed indices found for visualization mapping.")
              # Handle this case: maybe just write original video?
 
+        # Check if we have valid video writers before processing frames
+        if not (original_video and original_video.isOpened() and
+                landmarks_overlay_video and landmarks_overlay_video.isOpened() and
+                landmarks_only_video and landmarks_only_video.isOpened()):
+            logging.error("Cannot process visualization frames: One or more video writers failed to initialize")
+            # Clean up any writers that might be open
+            for writer in [original_video, landmarks_overlay_video, landmarks_only_video]:
+                if writer and writer.isOpened():
+                    writer.release()
+            return None
+
         # Process each frame for visualization
-        for frame_idx, frame in enumerate(self.all_frames):
-            # Put original frame in its queue
-            original_queue.put(frame)
+        try:
+            for frame_idx, frame in enumerate(self.all_frames):
+                # Put original frame in its queue
+                original_queue.put(frame)
 
-            # Find the closest processed frame result to use for drawing
-            result_to_draw = None
-            if processed_indices:
-                # Efficiently find the closest index using numpy searchsorted or simple min
-                # Simple min approach:
-                closest_proc_idx = min(processed_indices, key=lambda x: abs(x - frame_idx))
-                result_to_draw = self.all_results_map.get(closest_proc_idx)
+                # Find the closest processed frame result to use for drawing
+                result_to_draw = None
+                if processed_indices:
+                    # Efficiently find the closest index using numpy searchsorted or simple min
+                    # Simple min approach:
+                    closest_proc_idx = min(processed_indices, key=lambda x: abs(x - frame_idx))
+                    result_to_draw = self.all_results_map.get(closest_proc_idx)
 
-            if result_to_draw:
-                # Create copies for drawing
-                overlay_frame = frame.copy()
-                # Use a default black background if creation failed
-                landmarks_only = self.landmarks_background.copy() if self.landmarks_background is not None else np.zeros_like(frame)
+                if result_to_draw:
+                    # Create copies for drawing
+                    overlay_frame = frame.copy()
+                    # Use a default black background if creation failed
+                    landmarks_only = self.landmarks_background.copy() if self.landmarks_background is not None else np.zeros_like(frame)
 
+                    # Draw landmarks on both frames
+                    self._draw_all_landmarks(result_to_draw, overlay_frame, landmarks_only)
 
-                # Draw landmarks on both frames
-                self._draw_all_landmarks(result_to_draw, overlay_frame, landmarks_only)
-
-                overlay_queue.put(overlay_frame)
-                landmarks_queue.put(landmarks_only)
-            else:
-                # If no results, put original frame in overlay queue and blank in landmarks queue
-                overlay_queue.put(frame.copy()) # Use copy to avoid issues if frame modified later
-                landmarks_queue.put(self.landmarks_background.copy() if self.landmarks_background is not None else np.zeros_like(frame))
+                    overlay_queue.put(overlay_frame)
+                    landmarks_queue.put(landmarks_only)
+                else:
+                    # If no results, put original frame in overlay queue and blank in landmarks queue
+                    overlay_queue.put(frame.copy()) # Use copy to avoid issues if frame modified later
+                    landmarks_queue.put(self.landmarks_background.copy() if self.landmarks_background is not None else np.zeros_like(frame))
+        except Exception as e:
+            logging.error(f"Error processing visualization frames: {e}", exc_info=True)
 
 
         # Wait for queues to be emptied by writer threads
@@ -455,13 +541,38 @@ class MediaPipeBatchProcessor:
             if t.is_alive():
                 logging.warning(f"Writer thread {t.name} did not terminate cleanly.")
 
+        # Check if any videos were successfully created before attempting re-encoding
+        any_videos_created = False
+        for video_path in [original_video_path, landmarks_overlay_path, landmarks_only_path]:
+            if os.path.exists(str(video_path)):
+                any_videos_created = True
+                break
+
+        if not any_videos_created:
+            logging.error("No visualization videos were created, skipping re-encoding")
+            # Return empty paths to indicate failure
+            return {
+                "original": None,
+                "landmarks_overlay": None,
+                "landmarks_only": None
+            }
+
         # Re-encode videos with proper metadata to ensure cross-platform compatibility
         logging.info("Re-encoding visualization videos for web compatibility...")
-        
+
         for video_path in [original_video_path, landmarks_overlay_path, landmarks_only_path]:
+            # Check if the file exists before trying to move it
+            if not os.path.exists(str(video_path)):
+                logging.warning(f"Visualization file not found, skipping re-encoding: {video_path}")
+                continue
+
             temp_path = str(video_path) + ".temp.mp4"
-            shutil.move(str(video_path), temp_path)
-            
+            try:
+                shutil.move(str(video_path), temp_path)
+            except Exception as e:
+                logging.error(f"Failed to move visualization file for re-encoding: {e}")
+                continue
+
             # Make sure to pass the client-provided duration to re-encode function
             result = re_encode_video_with_duration(temp_path, str(video_path), target_duration)
             if result:
@@ -471,9 +582,12 @@ class MediaPipeBatchProcessor:
                     logging.warning(f"Could not remove temporary file {temp_path}: {e}")
             else:
                 # If re-encoding failed, restore original
-                shutil.move(temp_path, str(video_path))
-                logging.warning(f"Re-encoding failed for {video_path}, restored original")
-        
+                try:
+                    shutil.move(temp_path, str(video_path))
+                    logging.warning(f"Re-encoding failed for {video_path}, restored original")
+                except Exception as e:
+                    logging.error(f"Failed to restore original visualization file: {e}")
+
         elapsed_time = time.time() - start_time
         logging.info(f"Visualization video generation completed in {elapsed_time:.2f}s")
 
@@ -489,11 +603,11 @@ class MediaPipeBatchProcessor:
         if results.face_landmarks:
             # For face mesh, use a simplified drawing with fewer connections for better performance
             simplified_spec = mp_drawing.DrawingSpec(
-                color=self.face_color, 
+                color=self.face_color,
                 thickness=max(1, self.face_landmark_drawing_spec.thickness - 1),
                 circle_radius=max(1, self.face_landmark_drawing_spec.circle_radius - 1)
             )
-            
+
             # Draw only key facial features rather than full mesh for better performance
             mp_drawing.draw_landmarks(
                 overlay_frame, results.face_landmarks, mp_holistic.FACEMESH_CONTOURS,
@@ -646,13 +760,34 @@ def get_prediction(prediction_fn, pq_file):
         return "Error", 0.0
 
 
-def generate_speech(text, output_path="output.mp3"):
+def generate_speech(text, output_path=None):
     """Generates speech using gTTS."""
+    if output_path is None:
+        output_path = AUDIO_OUTPUT_PATH
     try:
         logging.info(f"Generating speech for text: '{text}'")
         tts = gTTS(text=text, lang='en')
+
+        # Save to the primary location
         tts.save(output_path)
         logging.info(f"Speech saved to {output_path}")
+
+        # Also save to the current directory for redundancy
+        current_dir_path = Path("output.mp3")
+        try:
+            tts.save(current_dir_path)
+            logging.info(f"Speech also saved to current directory: {current_dir_path}")
+        except Exception as e:
+            logging.warning(f"Could not save speech to current directory: {e}")
+
+        # Also save to the jetson directory for redundancy
+        jetson_dir_path = Path("/home/pavan/MLProjects/ISLRv6/jetson/output.mp3")
+        try:
+            tts.save(jetson_dir_path)
+            logging.info(f"Speech also saved to jetson directory: {jetson_dir_path}")
+        except Exception as e:
+            logging.warning(f"Could not save speech to jetson directory: {e}")
+
         return output_path
     except Exception as e:
         logging.error(f"Failed to generate speech: {e}", exc_info=True)
@@ -660,38 +795,157 @@ def generate_speech(text, output_path="output.mp3"):
 
 def re_encode_video(input_path, output_path):
     """Re-encodes video to H.264 MP4 for consistency."""
-    logging.info(f"Re-encoding video from {input_path} to {output_path} using H.264 (avc1)")
+    logging.info(f"Re-encoding video from {input_path} to {output_path}")
     start_time = time.time()
-    cap = cv2.VideoCapture(str(input_path))
-    if not cap.isOpened():
-        logging.error(f"Failed to open video for re-encoding: {input_path}")
-        return False
 
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    if fps <= 0: fps = 30 # Default fps
+    # Check if FFmpeg is available
+    ffmpeg_available = False
+    try:
+        import subprocess
+        result = subprocess.run(["which", "ffmpeg"], capture_output=True, text=True)
+        ffmpeg_available = result.returncode == 0
+    except Exception:
+        ffmpeg_available = False
 
-    fourcc = cv2.VideoWriter_fourcc(*'avc1') # H.264
-    out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
-    if not out.isOpened():
-        logging.error(f"Failed to open VideoWriter for output: {output_path}")
+    # First try FFmpeg if available (preferred method)
+    if ffmpeg_available:
+        try:
+            logging.info("Using FFmpeg for video re-encoding")
+            # Use FFmpeg directly for more reliable encoding on Jetson
+            cmd = [
+                "ffmpeg", "-y",  # Overwrite output file if it exists
+                "-i", str(input_path),  # Input file
+                "-c:v", "libx264",  # Use software H.264 encoder instead of hardware
+                "-preset", "ultrafast",  # Fastest encoding
+                "-profile:v", "baseline",  # Better compatibility
+                "-pix_fmt", "yuv420p",  # Required for browser compatibility
+                "-movflags", "+faststart",  # Optimize for web streaming
+                str(output_path)  # Output file
+            ]
+
+            logging.info(f"Running FFmpeg command: {' '.join(cmd)}")
+            result = subprocess.run(cmd, capture_output=True, text=True)
+
+            if result.returncode != 0:
+                logging.error(f"FFmpeg encoding failed: {result.stderr}")
+                # Don't return here, fall through to OpenCV method
+            else:
+                # Verify the output file exists and has reasonable size
+                if os.path.exists(output_path) and os.path.getsize(output_path) >= 1000:  # At least 1KB
+                    elapsed_time = time.time() - start_time
+                    logging.info(f"FFmpeg re-encoding finished in {elapsed_time:.2f}s")
+                    return True
+                else:
+                    logging.error(f"Re-encoding failed: output file missing or too small: {output_path}")
+                    # Don't return, fall through to OpenCV method
+        except Exception as e:
+            logging.error(f"Error during FFmpeg video re-encoding: {e}", exc_info=True)
+            # Don't return, fall through to OpenCV method
+    else:
+        logging.warning("FFmpeg not found, using OpenCV for video re-encoding")
+
+    # Fallback to OpenCV if FFmpeg fails or is not available
+    logging.info("Using OpenCV for video re-encoding")
+    try:
+        cap = cv2.VideoCapture(str(input_path))
+        if not cap.isOpened():
+            logging.error(f"Failed to open video for re-encoding: {input_path}")
+            return False
+
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        if fps <= 0: fps = 30 # Default fps
+
+        # Try different codecs in order of preference
+        codecs_to_try = [
+            ('avc1', '.mp4'),  # H.264
+            ('mp4v', '.mp4'),  # MPEG-4
+            ('MJPG', '.avi'),  # Motion JPEG
+            ('XVID', '.avi')   # XVID
+        ]
+
+        success = False
+        for codec, ext in codecs_to_try:
+            try:
+                logging.info(f"Trying codec: {codec}")
+                fourcc = cv2.VideoWriter_fourcc(*codec)
+                out_file = str(output_path) if ext == '.mp4' else str(output_path).replace('.mp4', ext)
+                out = cv2.VideoWriter(out_file, fourcc, fps, (width, height))
+
+                if not out.isOpened():
+                    logging.warning(f"Failed to open VideoWriter with codec {codec}, trying next codec")
+                    continue
+
+                # Rewind the video to the beginning
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+
+                frame_count = 0
+                while True:
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
+                    out.write(frame)
+                    frame_count += 1
+
+                out.release()
+
+                # If we used a non-MP4 format and FFmpeg is available, convert to MP4
+                if ext != '.mp4' and ffmpeg_available:
+                    try:
+                        logging.info(f"Converting {ext} to MP4 using FFmpeg")
+                        cmd = [
+                            "ffmpeg", "-y",
+                            "-i", out_file,
+                            "-c:v", "libx264",
+                            "-preset", "ultrafast",
+                            "-pix_fmt", "yuv420p",
+                            str(output_path)
+                        ]
+                        subprocess.run(cmd, capture_output=True, check=True)
+
+                        # Remove temporary file
+                        try:
+                            os.remove(out_file)
+                        except:
+                            pass
+                    except Exception as e:
+                        logging.error(f"Error during {ext} to MP4 conversion: {e}", exc_info=True)
+                        # If conversion fails, just use the original file
+                        if ext != '.mp4' and os.path.exists(out_file):
+                            try:
+                                os.rename(out_file, output_path)
+                            except:
+                                shutil.copy2(out_file, output_path)
+                                os.remove(out_file)
+                elif ext != '.mp4':
+                    # If FFmpeg is not available, just rename/copy the file
+                    try:
+                        os.rename(out_file, output_path)
+                    except:
+                        import shutil
+                        shutil.copy2(out_file, output_path)
+                        os.remove(out_file)
+
+                success = True
+                elapsed_time = time.time() - start_time
+                logging.info(f"OpenCV re-encoding finished in {elapsed_time:.2f}s. Wrote {frame_count} frames with codec {codec}.")
+                break  # Exit the codec loop if successful
+
+            except Exception as e:
+                logging.error(f"Error with codec {codec}: {e}", exc_info=True)
+                continue  # Try the next codec
+
         cap.release()
+
+        if not success:
+            logging.error("All codecs failed for video re-encoding")
+            return False
+
+        return True
+    except Exception as e:
+        logging.error(f"Error during OpenCV video re-encoding: {e}", exc_info=True)
         return False
-
-    frame_count = 0
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
-        out.write(frame)
-        frame_count += 1
-
-    cap.release()
-    out.release()
-    elapsed_time = time.time() - start_time
-    logging.info(f"Re-encoding finished in {elapsed_time:.2f}s. Wrote {frame_count} frames.")
-    return True
 
 def re_encode_video_with_duration(input_path, output_path, target_duration):
     """
@@ -700,23 +954,23 @@ def re_encode_video_with_duration(input_path, output_path, target_duration):
     """
     logging.info(f"Re-encoding video from {input_path} to {output_path} with target duration {target_duration:.2f}s")
     start_time = time.time()
-    
+
     # Get the properties of the input video
     cap = cv2.VideoCapture(str(input_path))
     if not cap.isOpened():
         logging.error(f"Failed to open video for re-encoding: {input_path}")
         return False
 
-    # Get video properties
+    # Get video properties - we need source_fps for the FFmpeg command
+    source_fps = cap.get(cv2.CAP_PROP_FPS)
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    source_fps = cap.get(cv2.CAP_PROP_FPS)
-    
+
     if source_fps <= 0:
         # If the FPS is not valid, use a reasonable default
         source_fps = 30.0
         logging.warning(f"Invalid source FPS detected, using default: {source_fps}")
-    
+
     # Count frames in the source video
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     if frame_count <= 0:
@@ -728,57 +982,168 @@ def re_encode_video_with_duration(input_path, output_path, target_duration):
             if not ret:
                 break
             frame_count += 1
-        
+
         logging.info(f"Manually counted {frame_count} frames in source video")
         cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Reset to beginning
-    
+
     # Calculate the actual duration of the source video
     actual_duration = frame_count / source_fps
     logging.info(f"Source video has {frame_count} frames at {source_fps:.2f} FPS (actual duration: {actual_duration:.2f}s)")
-    
-    # Re-encode the video using FFmpeg directly to preserve timing metadata
+
+    # Check if FFmpeg is available
+    ffmpeg_available = False
     try:
         import subprocess
-        
-        # Use FFmpeg to create a web-compatible version while preserving timing
-        cmd = [
-            "ffmpeg", "-y",
-            "-i", str(input_path),
-            "-c:v", "libx264",  # Use H.264 codec
-            "-preset", "medium",
-            "-profile:v", "baseline",  # Better browser compatibility
-            "-level", "3.0",
-            "-pix_fmt", "yuv420p",  # Required for browser compatibility
-            "-movflags", "+faststart",  # Optimizes for web streaming
-            "-video_track_timescale", "90000",  # High precision timescale
-            # Use the original FPS
-            "-r", str(source_fps),
-            # Set explicit duration metadata if needed
-            "-metadata", f"duration={target_duration}",
-            output_path
+        result = subprocess.run(["which", "ffmpeg"], capture_output=True, text=True)
+        ffmpeg_available = result.returncode == 0
+    except Exception:
+        ffmpeg_available = False
+
+    # If FFmpeg is available, use it for better results
+    if ffmpeg_available:
+        # Close the video capture before using FFmpeg
+        cap.release()
+
+        try:
+            # Use FFmpeg to create a web-compatible version while preserving timing
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", str(input_path),
+                "-c:v", "libx264",  # Use H.264 codec
+                "-preset", "ultrafast",  # Faster encoding for Jetson
+                "-profile:v", "baseline",  # Better browser compatibility
+                "-level", "3.0",
+                "-pix_fmt", "yuv420p",  # Required for browser compatibility
+                "-movflags", "+faststart",  # Optimizes for web streaming
+                "-video_track_timescale", "90000",  # High precision timescale
+                # Use the original FPS
+                "-r", str(source_fps),
+                # Set explicit duration metadata if needed
+                "-metadata", f"duration={target_duration}",
+                output_path
+            ]
+
+            logging.info(f"Running FFmpeg to preserve original characteristics: {' '.join(cmd)}")
+            result = subprocess.run(cmd, capture_output=True, text=True)
+
+            if result.returncode != 0:
+                logging.error(f"FFmpeg processing failed: {result.stderr}")
+                # Fall through to OpenCV method
+            else:
+                # Verify the output file exists and has reasonable size
+                if os.path.exists(output_path) and os.path.getsize(output_path) >= 1000:  # At least 1KB
+                    elapsed_time = time.time() - start_time
+                    logging.info(f"FFmpeg processing successful, created video with original characteristics")
+                    logging.info(f"Re-encoding finished in {elapsed_time:.2f}s. Preserved original {frame_count} frames at {source_fps:.2f} FPS.")
+                    return True
+                else:
+                    logging.error(f"Re-encoding failed: output file missing or too small: {output_path}")
+                    # Fall through to OpenCV method
+        except Exception as e:
+            logging.error(f"Error during FFmpeg video encoding: {e}", exc_info=True)
+            # Fall through to OpenCV method
+    else:
+        logging.warning("FFmpeg not available, using OpenCV for video re-encoding with duration")
+
+    # Fallback to OpenCV if FFmpeg is not available or failed
+    try:
+        logging.info("Using OpenCV for video re-encoding with duration")
+
+        # Make sure we're at the beginning of the video
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+
+        # Try different codecs in order of preference
+        codecs_to_try = [
+            ('avc1', '.mp4'),  # H.264
+            ('mp4v', '.mp4'),  # MPEG-4
+            ('MJPG', '.avi'),  # Motion JPEG
+            ('XVID', '.avi')   # XVID
         ]
-        
-        logging.info(f"Running FFmpeg to preserve original characteristics: {' '.join(cmd)}")
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        
-        if result.returncode != 0:
-            logging.error(f"FFmpeg processing failed: {result.stderr}")
+
+        success = False
+        for codec, ext in codecs_to_try:
+            try:
+                logging.info(f"Trying codec: {codec}")
+                fourcc = cv2.VideoWriter_fourcc(*codec)
+                out_file = str(output_path) if ext == '.mp4' else str(output_path).replace('.mp4', ext)
+                out = cv2.VideoWriter(out_file, fourcc, source_fps, (width, height))
+
+                if not out.isOpened():
+                    logging.warning(f"Failed to open VideoWriter with codec {codec}, trying next codec")
+                    continue
+
+                # Rewind the video to the beginning
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+
+                frame_count = 0
+                while True:
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
+                    out.write(frame)
+                    frame_count += 1
+
+                out.release()
+
+                # If we used a non-MP4 format and FFmpeg is available, convert to MP4
+                if ext != '.mp4' and ffmpeg_available:
+                    try:
+                        logging.info(f"Converting {ext} to MP4 using FFmpeg")
+                        cmd = [
+                            "ffmpeg", "-y",
+                            "-i", out_file,
+                            "-c:v", "libx264",
+                            "-preset", "ultrafast",
+                            "-pix_fmt", "yuv420p",
+                            "-metadata", f"duration={target_duration}",
+                            str(output_path)
+                        ]
+                        subprocess.run(cmd, capture_output=True, check=True)
+
+                        # Remove temporary file
+                        try:
+                            os.remove(out_file)
+                        except:
+                            pass
+                    except Exception as e:
+                        logging.error(f"Error during {ext} to MP4 conversion: {e}", exc_info=True)
+                        # If conversion fails, just use the original file
+                        if ext != '.mp4' and os.path.exists(out_file):
+                            try:
+                                os.rename(out_file, output_path)
+                            except:
+                                import shutil
+                                shutil.copy2(out_file, output_path)
+                                os.remove(out_file)
+                elif ext != '.mp4':
+                    # If FFmpeg is not available, just rename/copy the file
+                    try:
+                        os.rename(out_file, output_path)
+                    except:
+                        import shutil
+                        shutil.copy2(out_file, output_path)
+                        os.remove(out_file)
+
+                success = True
+                elapsed_time = time.time() - start_time
+                logging.info(f"OpenCV re-encoding finished in {elapsed_time:.2f}s. Wrote {frame_count} frames with codec {codec}.")
+                break  # Exit the codec loop if successful
+
+            except Exception as e:
+                logging.error(f"Error with codec {codec}: {e}", exc_info=True)
+                continue  # Try the next codec
+
+        cap.release()
+
+        if not success:
+            logging.error("All codecs failed for video re-encoding with duration")
             return False
-            
-        # Verify the output file exists and has reasonable size
-        if not os.path.exists(output_path) or os.path.getsize(output_path) < 1000:  # At least 1KB
-            logging.error(f"Re-encoding failed: output file missing or too small: {output_path}")
-            return False
-            
-        logging.info(f"FFmpeg processing successful, created video with original characteristics")
-        
+
+        return True
     except Exception as e:
-        logging.error(f"Error during video encoding: {e}")
+        logging.error(f"Error during OpenCV video re-encoding with duration: {e}", exc_info=True)
+        cap.release()
         return False
-    
-    elapsed_time = time.time() - start_time
-    logging.info(f"Re-encoding finished in {elapsed_time:.2f}s. Preserved original {frame_count} frames at {source_fps:.2f} FPS.")
-    return True
 
 # --- Flask Routes ---
 
@@ -901,7 +1266,11 @@ def predict():
 
     # 6. Generate Speech Output
     speech_path = generate_speech(f'The predicted sign is {detected_sign}')
-    audio_url = "/audio" if speech_path else None # Provide URL only if generation succeeded
+
+    # Create a full URL with the server's IP address and a timestamp to prevent caching
+    server_ip = request.host.split(':')[0]  # Extract IP from host (without port)
+    timestamp = int(time.time() * 1000)
+    audio_url = f"http://{server_ip}:5000/audio?t={timestamp}" if speech_path else None
 
     # 7. Prepare Initial Response (Prediction Ready)
     response_data = {
@@ -961,7 +1330,7 @@ def check_visualizations():
         logging.debug("All visualization videos found.")
         # Get host information from request to build absolute URLs
         host_url = request.host_url.rstrip('/')
-        
+
         # Return API endpoints instead of just filenames
         visualization_urls = {
             "original": f"{host_url}/visualizations/{original_video_path.name}",
@@ -982,15 +1351,43 @@ def check_visualizations():
 @app.route("/audio", methods=["GET"])
 def get_audio():
     """Serves the generated audio file."""
-    audio_file = "output.mp3"
-    logging.debug(f"Serving audio file: {audio_file}")
-    if os.path.exists(audio_file):
-        # Use 206 Partial Content if Range header is present (common for audio/video)
-        # However, for simplicity, just send the whole file. Browsers handle it.
-        return send_file(audio_file, mimetype="audio/mpeg")
-    else:
-        logging.warning(f"Audio file not found: {audio_file}")
-        return jsonify({"error": "Audio file not found"}), 404
+    # Define all possible paths where the audio file might be
+    possible_paths = [
+        AUDIO_OUTPUT_PATH,  # The configured path
+        Path("output.mp3"),  # Current directory
+        Path("/home/pavan/MLProjects/ISLRv6/output.mp3"),  # Project root
+        Path("/home/pavan/MLProjects/ISLRv6/saved_videos/output.mp3"),  # Explicit path
+        Path("/home/pavan/MLProjects/ISLRv6/jetson/output.mp3"),  # Jetson directory
+        Path("/home/pavan/MLProjects/ISLRv6/jetson/saved_videos/output.mp3")  # Full path with jetson prefix
+    ]
+
+    # Log all possible paths for debugging
+    logging.debug(f"Checking for audio file at multiple possible paths")
+
+    # Try each path
+    for path in possible_paths:
+        if os.path.exists(path):
+            logging.info(f"Audio file found at: {path}")
+            try:
+                # Create a response with the file
+                response = send_file(str(path), mimetype="audio/mpeg")
+
+                # Add CORS headers to ensure it works across different origins
+                response.headers.add('Access-Control-Allow-Origin', '*')
+                response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+                response.headers.add('Access-Control-Allow-Methods', 'GET')
+                response.headers.add('Cache-Control', 'no-cache, no-store, must-revalidate')
+                response.headers.add('Pragma', 'no-cache')
+                response.headers.add('Expires', '0')
+
+                return response
+            except Exception as e:
+                logging.error(f"Error serving audio file from {path}: {e}")
+                continue
+
+    # If we get here, the file wasn't found at any of the expected locations
+    logging.warning(f"Audio file not found at any of the expected paths: {possible_paths}")
+    return jsonify({"error": "Audio file not found"}), 404
 
 # Serve visualization videos (optional, if not served by frontend directly)
 # Example: Route to serve a specific visualization video

@@ -245,12 +245,12 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
   const [speechBlocked, setSpeechBlocked] = useState<boolean>(false);
   // Remove the debug message state that was visible to users
   const [debugMessageInternal, setDebugMessageInternal] = useState<string>('');
-  
+
   // Prevent hydration errors
   const [isClient, setIsClient] = useState(false);
   useEffect(() => {
     setIsClient(true);
-    
+
     // Initialize speech synthesis
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       speechSynthesisRef.current = window.speechSynthesis;
@@ -270,19 +270,19 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
     if (speechSynthesisRef.current) {
       // Get initial voices - might be empty array in some browsers
       const initialVoices = speechSynthesisRef.current.getVoices();
-      
+
       if (initialVoices.length > 0) {
         console.log(`Initial voices available: ${initialVoices.length}`);
         setVoicesLoaded(true);
       }
-      
+
       // Set up voices changed event handler
       const handleVoicesChanged = () => {
         const voices = speechSynthesisRef.current?.getVoices() || [];
         console.log(`Voices loaded: ${voices.length}`);
         setVoicesLoaded(true);
       };
-      
+
       speechSynthesisRef.current.onvoiceschanged = handleVoicesChanged;
     }
   }, []);
@@ -304,40 +304,40 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
 
       // Cancel any existing speech
       speechSynthesisRef.current.cancel();
-      
+
       // Create welcome message with instructions
       const welcomeMessage = new SpeechSynthesisUtterance(
         "Welcome to SignEase! To start sign language detection, position yourself clearly in the camera view, adjust the recording duration using the slider if needed, and click the Start Recording button. For best results, ensure good lighting and perform clear, deliberate gestures."
       );
-      
+
       // Configure voice properties
       welcomeMessage.rate = 1.0; // Normal speed
       welcomeMessage.pitch = 1.0; // Normal pitch
       welcomeMessage.volume = 1.0; // Full volume
-      
+
       // Get available voices and select a good English voice if available
       const voices = speechSynthesisRef.current.getVoices();
       console.log(`Available voices: ${voices.length}`);
-      
+
       if (voices.length > 0) {
         // Filter for English voices
-        const englishVoices = voices.filter(voice => 
+        const englishVoices = voices.filter(voice =>
           voice.lang.includes('en') || voice.name.includes('English')
         );
         console.log(`English voices: ${englishVoices.length}`);
-        
+
         if (englishVoices.length > 0) {
           // Prefer a female voice if available
-          const femaleVoice = englishVoices.find(voice => 
-            voice.name.includes('Female') || 
-            voice.name.includes('woman') || 
+          const femaleVoice = englishVoices.find(voice =>
+            voice.name.includes('Female') ||
+            voice.name.includes('woman') ||
             voice.name.includes('Girl')
           );
           welcomeMessage.voice = femaleVoice || englishVoices[0];
           console.log(`Selected voice: ${welcomeMessage.voice?.name || 'Default'}`);
         }
       }
-      
+
       // Event handlers for speech
       welcomeMessage.onstart = () => {
         console.log('Speech started');
@@ -345,7 +345,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
         // Only log internally, don't show to user
         setDebugMessageInternal('Speech in progress...');
       };
-      
+
       welcomeMessage.onend = () => {
         console.log('Speech ended');
         setIsSpeaking(false);
@@ -355,7 +355,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
         // Mark that we've played the welcome message in this session
         sessionStorage.setItem('welcomeMessagePlayed', 'true');
       };
-      
+
       welcomeMessage.onerror = (event) => {
         console.error('Speech synthesis error:', event);
         setIsSpeaking(false);
@@ -364,13 +364,13 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
         // Only log internally, don't show user-facing error messages
         setDebugMessageInternal(`Speech error occurred`);
       };
-      
+
       // Speak the message
       setIsSpeaking(true);
       // Only log internally, don't show to user
       setDebugMessageInternal('Attempting to speak...');
       speechSynthesisRef.current.speak(welcomeMessage);
-      
+
       // Set a timeout to check if speech actually started
       setTimeout(() => {
         if (speechSynthesisRef.current && !speechSynthesisRef.current.speaking) {
@@ -381,7 +381,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
           setDebugMessageInternal('Speech may be blocked by browser');
         }
       }, 1000);
-      
+
     } catch (error) {
       console.error("Error in speech synthesis:", error);
       setIsSpeaking(false);
@@ -397,7 +397,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
       // Try to speak automatically
       console.log("Attempting to speak welcome message");
       speakWelcomeMessage();
-      
+
       // Add a fallback for browsers that block auto-speech
       const interactionTimeout = setTimeout(() => {
         if (!isSpeaking && !hasPlayedWelcome) {
@@ -406,7 +406,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
           setDebugMessageInternal('Please click "Play Instructions" to hear guidance');
         }
       }, 2000);
-      
+
       return () => clearTimeout(interactionTimeout);
     }
   }, [mounted, isClient, voicesLoaded, hasPlayedWelcome, isSpeaking, speakWelcomeMessage]);
@@ -422,7 +422,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
       speakWelcomeMessage();
     }
   };
-  
+
   // Clean up speech synthesis when component unmounts
   useEffect(() => {
     return () => {
@@ -527,7 +527,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
       setPrediction("Processing video...");
       const formData = new FormData();
       formData.append("video", videoBlob, `sign_${Date.now()}.webm`);
-      
+
       // Add recording duration to the form data - this is critical for consistent video timing
       formData.append("duration", duration.toString());
       console.log(`Sending recording duration: ${duration}s to backend`);
@@ -564,11 +564,30 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
         setCapturing(false);
 
         if (responseData.audio_url) {
-          // Use the same API URL for audio as well
-          const audio = new Audio(
-            `${BACKEND_API_URL}${responseData.audio_url}?t=${Date.now()}`
-          );
-          void audio.play().catch(console.error);
+          // Use the full audio URL provided by the backend
+          console.log(`Playing audio from: ${responseData.audio_url}`);
+          const audio = new Audio(responseData.audio_url);
+
+          // Add event listeners for debugging
+          audio.addEventListener('canplaythrough', () => {
+            console.log('Audio can play through');
+          });
+
+          audio.addEventListener('error', (e) => {
+            console.error('Audio error:', e);
+          });
+
+          // Try to play the audio
+          audio.play().then(() => {
+            console.log('Audio playback started successfully');
+          }).catch(err => {
+            console.error('Audio playback failed:', err);
+
+            // Fallback: try with a direct URL if the provided one fails
+            console.log('Trying fallback audio URL...');
+            const fallbackAudio = new Audio(`${BACKEND_API_URL}/audio?t=${Date.now()}`);
+            fallbackAudio.play().catch(e => console.error('Fallback audio also failed:', e));
+          });
         }
       });
     } catch (error: unknown) {
@@ -633,10 +652,10 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
   // Added pulse animation for action buttons
   const pulseAnimation = {
     scale: [1, 1.02, 1],
-    transition: { 
-      duration: 2, 
-      repeat: Infinity, 
-      ease: "easeInOut" 
+    transition: {
+      duration: 2,
+      repeat: Infinity,
+      ease: "easeInOut"
     }
   };
 
@@ -659,7 +678,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
       {/* Background with consistent styling */}
       <div className="fixed inset-0">
         <div className="absolute inset-0 bg-[#030303]" />
-        <motion.div 
+        <motion.div
           className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.05] via-transparent to-rose-500/[0.05]"
           animate={{
             opacity: [0.7, 1, 0.7],
@@ -759,7 +778,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                   Home
                 </Link>
               </motion.div>
-              
+
               <motion.div whileHover={{ scale: 1.05, color: "#818cf8" }} transition={{ type: "spring", stiffness: 400, damping: 10 }}>
                 <Link
                   href="/#technology"
@@ -768,7 +787,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                   Technology
                 </Link>
               </motion.div>
-              
+
               <motion.div whileHover={{ scale: 1.05, color: "#818cf8" }} transition={{ type: "spring", stiffness: 400, damping: 10 }}>
                 <Link
                   href="/#team"
@@ -777,7 +796,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                   Team
                 </Link>
               </motion.div>
-              
+
               <motion.div whileHover={{ scale: 1.05, color: "#818cf8" }} transition={{ type: "spring", stiffness: 400, damping: 10 }}>
                 <Link
                   href="/#contact"
@@ -830,7 +849,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                   </span>
                 </motion.div>
 
-                <motion.h1 
+                <motion.h1
                   className="text-5xl sm:text-6xl md:text-7xl font-bold mb-4"
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -858,7 +877,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                   </motion.span>
                 </motion.h1>
 
-                <motion.p 
+                <motion.p
                   className="text-base sm:text-lg text-white/60 max-w-2xl mx-auto"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -894,8 +913,8 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                     transition={{ duration: 0.3 }}
                     className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-indigo-500/20 rounded-full border border-indigo-500/30"
                   >
-                    <motion.div 
-                      animate={{ 
+                    <motion.div
+                      animate={{
                         scale: [1, 1.2, 1],
                         opacity: [0.5, 1, 0.5]
                       }}
@@ -903,7 +922,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                       className="w-2 h-2 bg-indigo-400 rounded-full"
                     />
                     <span className="text-sm text-white/80">Speaking instructions...</span>
-                    <button 
+                    <button
                       onClick={() => {
                         if (speechSynthesisRef.current) {
                           speechSynthesisRef.current.cancel();
@@ -918,7 +937,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                     </button>
                   </motion.div>
                 )}
-                
+
                 {/* Remove the visible debug message that was showing errors to users */}
               </motion.div>
 
@@ -929,7 +948,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                 transition={{ duration: 0.7, delay: 0.3 }}
                 className="w-full max-w-5xl mx-auto"
               >
-                <motion.div 
+                <motion.div
                   className="bg-white/[0.03] backdrop-blur-md border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl"
                   whileHover={{ boxShadow: "0 0 25px rgba(255,255,255,0.08)" }}
                   transition={{ duration: 0.5 }}
@@ -937,7 +956,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                   <div className="flex flex-col lg:flex-row gap-8">
                     {/* Webcam section with enhanced styling */}
                     <div className="flex-1 relative">
-                      <motion.div 
+                      <motion.div
                         className="rounded-xl overflow-hidden relative aspect-video bg-gradient-to-br from-black/30 to-black/10 border border-white/10"
                         whileHover={{ borderColor: "rgba(255,255,255,0.2)" }}
                         transition={{ duration: 0.3 }}
@@ -952,13 +971,13 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
 
                         {/* Enhanced overlay elements */}
                         {capturing && (
-                          <motion.div 
+                          <motion.div
                             className="absolute inset-0 flex items-center justify-center"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ duration: 0.3 }}
                           >
-                            <motion.div 
+                            <motion.div
                               className="absolute top-4 right-4 bg-black/60 text-white px-3 py-1.5 rounded-full backdrop-blur-md border border-white/10 flex items-center gap-2"
                               animate={{ backgroundColor: ["rgba(0,0,0,0.6)", "rgba(0,0,0,0.7)", "rgba(0,0,0,0.6)"] }}
                               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
@@ -1000,13 +1019,13 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                               className="bg-gradient-to-r from-indigo-500 to-rose-500 hover:opacity-90 text-white transition-all flex items-center gap-3 px-8 py-6 rounded-full shadow-lg shadow-indigo-500/20"
                             >
                               <motion.div
-                                animate={{ 
+                                animate={{
                                   scale: [1, 1.2, 1],
                                 }}
-                                transition={{ 
+                                transition={{
                                   duration: 2,
                                   repeat: Infinity,
-                                  ease: "easeInOut" 
+                                  ease: "easeInOut"
                                 }}
                               >
                                 <FaCamera className="text-lg" />
@@ -1064,7 +1083,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                           <label className="text-white/70 text-sm font-medium">
                             Recording Duration
                           </label>
-                          <motion.span 
+                          <motion.span
                             className="text-white/90 font-medium px-3 py-1 bg-white/5 rounded-full"
                             animate={capturing ? { scale: [1, 1.1, 1] } : {}}
                             transition={{ duration: 1, repeat: capturing ? Infinity : 0 }}
@@ -1089,7 +1108,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
 
                       {/* Replace the existing dictionary button with improved PixelCard */}
                       <div className="mt-12 pt-4 border-t border-white/10">
-                        <motion.div 
+                        <motion.div
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.6, delay: 0.2 }}
@@ -1098,8 +1117,8 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                           {/* Learn button - PixelCard only, no extra animations */}
                           <Link href="/dictionary">
                             <div className="h-[320px] w-full sm:w-[280px]">
-                              <PixelCard 
-                                variant="pink" 
+                              <PixelCard
+                                variant="pink"
                                 className="h-full w-full cursor-pointer"
                               >
                                 <div className="flex flex-col items-center gap-2">
@@ -1129,8 +1148,8 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                           {/* Visualize button - PixelCard only, no extra animations */}
                           <Link href="/visualize">
                             <div className="h-[320px] w-full sm:w-[280px]">
-                              <PixelCard 
-                                variant="blue" 
+                              <PixelCard
+                                variant="blue"
                                 className="h-full w-full cursor-pointer"
                               >
                                 <div className="flex flex-col items-center gap-2">
@@ -1156,7 +1175,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
 
                     {/* Enhanced Result section with better spacing and readability */}
                     <div className="flex-1 flex flex-col lg:border-l lg:border-white/10 lg:pl-8">
-                      <motion.h3 
+                      <motion.h3
                         className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white/90 to-rose-300 mb-6"
                         animate={{
                           textShadow: [
@@ -1171,7 +1190,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                       </motion.h3>
 
                       <div className="flex-1 flex flex-col">
-                        <motion.div 
+                        <motion.div
                           className="bg-white/[0.02] border border-white/[0.05] rounded-xl p-6 h-full flex flex-col"
                           whileHover={{ borderColor: "rgba(255,255,255,0.1)" }}
                           transition={{ duration: 0.3 }}
@@ -1179,7 +1198,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                           {capturing ? (
                             <div className="flex-1 flex items-center justify-center flex-col">
                               <motion.div
-                                animate={{ 
+                                animate={{
                                   rotate: [0, 360],
                                   boxShadow: [
                                     "0 0 0 rgba(129, 140, 248, 0)",
@@ -1187,14 +1206,14 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                                     "0 0 0 rgba(129, 140, 248, 0)"
                                   ]
                                 }}
-                                transition={{ 
+                                transition={{
                                   rotate: { duration: 2, repeat: Infinity, ease: "linear" },
                                   boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" }
                                 }}
                               >
                                 <div className="w-16 h-16 rounded-full border-4 border-indigo-500/20 border-t-indigo-500"></div>
                               </motion.div>
-                              <motion.p 
+                              <motion.p
                                 className="mt-6 text-white/60"
                                 animate={{ opacity: [0.6, 1, 0.6] }}
                                 transition={{ duration: 1.5, repeat: Infinity }}
@@ -1207,7 +1226,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                               <div className="relative w-20 h-20">
                                 <motion.div
                                   className="absolute inset-0 rounded-full border-4 border-rose-500/20"
-                                  animate={{ 
+                                  animate={{
                                     scale: [1, 1.1, 1],
                                     opacity: [0.5, 0.8, 0.5]
                                   }}
@@ -1219,7 +1238,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                                   transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
                                 ></motion.div>
                               </div>
-                              <motion.p 
+                              <motion.p
                                 className="mt-6 text-white/60"
                                 animate={{ opacity: [0.6, 1, 0.6] }}
                                 transition={{ duration: 1.5, repeat: Infinity }}
@@ -1228,7 +1247,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                               </motion.p>
                             </div>
                           ) : prediction !== "No sign detected" ? (
-                            <motion.div 
+                            <motion.div
                               className="flex-1 flex flex-col items-center justify-center text-center"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
@@ -1236,7 +1255,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                             >
                               <motion.div
                                 className="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500/20 to-rose-500/20 flex items-center justify-center mb-8" // Increased margin
-                                animate={{ 
+                                animate={{
                                   boxShadow: [
                                     "0 0 0 rgba(255,255,255,0)",
                                     "0 0 25px rgba(129, 140, 248, 0.3)",
@@ -1247,7 +1266,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                               >
                                 <motion.div
                                   initial={{ scale: 0 }}
-                                  animate={{ 
+                                  animate={{
                                     scale: 1,
                                     rotate: [0, 5, -5, 0]
                                   }}
@@ -1259,7 +1278,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                                   <IoVolumeHigh className="text-4xl text-white/90" />
                                 </motion.div>
                               </motion.div>
-                              
+
                               <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
@@ -1282,7 +1301,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                                 >
                                   {prediction}
                                 </motion.h3>
-                                
+
                                 <div className="flex flex-col items-center">
                                   <p className="text-white/60 text-sm mb-3"> {/* Increased spacing */}
                                     Confidence Level
@@ -1298,7 +1317,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                                       }}
                                     ></motion.div>
                                   </div>
-                                  <motion.p 
+                                  <motion.p
                                     className="text-white/90 font-medium px-5 py-2 bg-white/5 rounded-full" // Increased padding
                                     initial={{ scale: 0.8 }}
                                     animate={{ scale: 1 }}
@@ -1310,7 +1329,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                               </motion.div>
                             </motion.div>
                           ) : (
-                            <motion.div 
+                            <motion.div
                               className="flex-1 flex items-center justify-center flex-col text-center"
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
@@ -1318,7 +1337,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                             >
                               <motion.div
                                 className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-4"
-                                animate={{ 
+                                animate={{
                                   y: [0, -10, 0],
                                   opacity: [0.7, 1, 0.7]
                                 }}
@@ -1326,7 +1345,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                               >
                                 <FaHandPaper className="text-3xl text-white/40" />
                               </motion.div>
-                              <motion.h4 
+                              <motion.h4
                                 className="text-xl font-medium text-white/80 mb-3"
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
@@ -1334,7 +1353,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                               >
                                 No Sign Detected
                               </motion.h4>
-                              <motion.p 
+                              <motion.p
                                 className="mt-2 text-white/50 max-w-md"
                                 initial={{ y: 20, opacity: 0 }}
                                 animate={{ y: 0, opacity: 1 }}
@@ -1348,7 +1367,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                         </motion.div>
 
                         {/* How to use section with improved layout */}
-                        <motion.div 
+                        <motion.div
                           className="mt-6 bg-white/[0.02] border border-white/[0.05] rounded-xl p-6" // Increased padding
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -1356,15 +1375,15 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                           whileHover={{ borderColor: "rgba(255,255,255,0.1)" }}
                         >
                           <h4 className="text-base font-medium text-white/80 mb-4 flex items-center gap-2"> {/* Increased size and spacing */}
-                            <motion.span 
+                            <motion.span
                               className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-500/20"
-                              animate={{ 
+                              animate={{
                                 scale: [1, 1.1, 1],
                                 boxShadow: [
                                   "0 0 0px rgba(129, 140, 248, 0.3)",
                                   "0 0 5px rgba(129, 140, 248, 0.6)",
                                   "0 0 0px rgba(129, 140, 248, 0.3)"
-                                ] 
+                                ]
                               }}
                               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                             >
@@ -1372,7 +1391,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                             </motion.span>
                             How to use
                           </h4>
-                          
+
                           <ol className="list-decimal list-inside space-y-3 text-sm text-white/60 ml-2 mb-4"> {/* Increased spacing */}
                             <motion.li
                               initial={{ opacity: 0, x: -10 }}
@@ -1427,10 +1446,10 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                             </p>
                           </div>
                         </motion.div>
-                        
+
                         {/* Replay instructions button with improved styling */}
                         {hasPlayedWelcome && (
-                          <motion.div 
+                          <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 1, duration: 0.5 }}
@@ -1462,7 +1481,7 @@ const SignDetection: React.FC<SignDetectionProps> = React.memo(() => {
                 transition={{ duration: 0.7, delay: 0.6 }}
                 className="mt-20 w-full max-w-4xl mx-auto text-center" // Increased top margin
               >
-                <motion.h3 
+                <motion.h3
                   className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-300 via-white/90 to-rose-300 mb-5" // Increased spacing
                   animate={{
                     textShadow: [

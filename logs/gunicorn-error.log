@@ -311,3 +311,50 @@
 [2025-04-12 13:57:31 +0530] [31634] [INFO] Worker exiting (pid: 31634)
 [2025-04-12 13:57:31 +0530] [31633] [INFO] Worker exiting (pid: 31633)
 [2025-04-12 13:57:36 +0530] [31528] [INFO] Shutting down: Master
+[2025-04-12 21:20:32 +0530] [5655] [INFO] Starting gunicorn 23.0.0
+[2025-04-12 21:20:32 +0530] [5655] [INFO] Listening at: https://0.0.0.0:5000 (5655)
+[2025-04-12 21:20:32 +0530] [5655] [INFO] Using worker: gthread
+[2025-04-12 21:20:32 +0530] [5912] [INFO] Booting worker with pid: 5912
+[2025-04-12 21:20:32 +0530] [5913] [INFO] Booting worker with pid: 5913
+[2025-04-12 21:20:32 +0530] [5914] [INFO] Booting worker with pid: 5914
+[2025-04-12 21:20:32 +0530] [5915] [INFO] Booting worker with pid: 5915
+[2025-04-12 21:21:37 +0530] [5655] [INFO] Handling signal: term
+[2025-04-12 21:21:37 +0530] [5913] [INFO] Worker exiting (pid: 5913)
+[2025-04-12 21:21:37 +0530] [5914] [INFO] Worker exiting (pid: 5914)
+[2025-04-12 21:21:37 +0530] [5655] [ERROR] Worker (pid:5914) was sent SIGKILL! Perhaps out of memory?
+[2025-04-12 21:21:37 +0530] [5655] [ERROR] Worker (pid:5915) was sent SIGKILL! Perhaps out of memory?
+[2025-04-12 21:21:37 +0530] [5655] [ERROR] Worker (pid:5912) was sent SIGKILL! Perhaps out of memory?
+[2025-04-12 21:21:39 +0530] [5655] [INFO] Shutting down: Master
+[2025-04-12 21:21:46 +0530] [6043] [INFO] Starting gunicorn 23.0.0
+[2025-04-12 21:21:46 +0530] [6043] [INFO] Listening at: https://0.0.0.0:5000 (6043)
+[2025-04-12 21:21:46 +0530] [6043] [INFO] Using worker: gthread
+[2025-04-12 21:21:46 +0530] [6120] [INFO] Booting worker with pid: 6120
+[2025-04-12 21:21:46 +0530] [6121] [INFO] Booting worker with pid: 6121
+[2025-04-12 21:21:46 +0530] [6122] [INFO] Booting worker with pid: 6122
+[2025-04-12 21:21:46 +0530] [6123] [INFO] Booting worker with pid: 6123
+[2025-04-12 21:25:14 +0530] [6043] [INFO] Handling signal: winch
+[2025-04-12 21:25:59 +0530] [6121] [WARNING] Invalid request from ip=192.168.0.101: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] sslv3 alert certificate unknown (_ssl.c:2578)
+[2025-04-12 21:26:07 +0530] [6123] [WARNING] Invalid request from ip=192.168.0.101: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] sslv3 alert certificate unknown (_ssl.c:2578)
+[2025-04-12 21:26:11 +0530] [6123] [WARNING] Invalid request from ip=192.168.0.101: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] sslv3 alert certificate unknown (_ssl.c:2578)
+[2025-04-12 21:26:11 +0530] [6123] [WARNING] Invalid request from ip=192.168.0.101: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] sslv3 alert certificate unknown (_ssl.c:2578)
+[2025-04-12 21:26:11 +0530] [6121] [WARNING] Invalid request from ip=192.168.0.101: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] sslv3 alert certificate unknown (_ssl.c:2578)
+[2025-04-12 21:26:11 +0530] [6122] [WARNING] Invalid request from ip=192.168.0.101: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] sslv3 alert certificate unknown (_ssl.c:2578)
+[2025-04-12 21:26:13 +0530] [6123] [WARNING] Invalid request from ip=192.168.0.101: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] sslv3 alert certificate unknown (_ssl.c:2578)
+[2025-04-12 21:26:23 +0530] [6122] [WARNING] Invalid request from ip=192.168.0.101: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] sslv3 alert certificate unknown (_ssl.c:2578)
+[2025-04-12 21:26:23 +0530] [6121] [WARNING] Invalid request from ip=192.168.0.101: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] sslv3 alert certificate unknown (_ssl.c:2578)
+[2025-04-12 21:26:23 +0530] [6121] [WARNING] Invalid request from ip=192.168.0.101: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] sslv3 alert certificate unknown (_ssl.c:2578)
+[2025-04-12 21:26:24 +0530] [6120] [WARNING] Invalid request from ip=192.168.0.101: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] sslv3 alert certificate unknown (_ssl.c:2578)
+[2025-04-12 21:26:30 +0530] [6123] [WARNING] Invalid request from ip=192.168.0.101: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] sslv3 alert certificate unknown (_ssl.c:2578)
+[2025-04-12 21:26:30 +0530] [6121] [WARNING] Invalid request from ip=192.168.0.101: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] sslv3 alert certificate unknown (_ssl.c:2578)
+[2025-04-12 21:26:31 +0530] [6121] [WARNING] Invalid request from ip=192.168.0.101: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] sslv3 alert certificate unknown (_ssl.c:2578)
+[2025-04-12 21:26:35 +0530] [6122] [WARNING] Invalid request from ip=192.168.0.101: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] sslv3 alert certificate unknown (_ssl.c:2578)
+[2025-04-12 21:27:04 +0530] [6121] [WARNING] Invalid request from ip=192.168.0.101: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] sslv3 alert certificate unknown (_ssl.c:2578)
+[2025-04-12 21:27:09 +0530] [6123] [WARNING] Invalid request from ip=192.168.0.101: [SSL: SSLV3_ALERT_CERTIFICATE_UNKNOWN] sslv3 alert certificate unknown (_ssl.c:2578)
+[2025-04-12 21:27:55 +0530] [6043] [INFO] Handling signal: winch
+[2025-04-12 21:27:55 +0530] [6043] [INFO] Handling signal: winch
+[2025-04-12 21:28:03 +0530] [6043] [INFO] Handling signal: int
+[2025-04-12 21:28:03 +0530] [6123] [INFO] Worker exiting (pid: 6123)
+[2025-04-12 21:28:03 +0530] [6120] [INFO] Worker exiting (pid: 6120)
+[2025-04-12 21:28:03 +0530] [6122] [INFO] Worker exiting (pid: 6122)
+[2025-04-12 21:28:03 +0530] [6121] [INFO] Worker exiting (pid: 6121)
+[2025-04-12 21:28:06 +0530] [6043] [INFO] Shutting down: Master

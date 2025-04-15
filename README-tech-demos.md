@@ -1,4 +1,4 @@
-# Tech Demo Video Generation Commands
+534 s# Tech Demo Video Generation Commands
 
 This guide provides instructions for generating technology demonstration videos using the `generate_tech_demos.py` script.
 

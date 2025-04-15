@@ -93,6 +93,7 @@ source ~/MLProjects/PythonVenv/SigneaseENV/bin/activate
 
 # Install production dependencies
 pip install gunicorn pyopenssl
+sudo apt-get update && sudo apt-get install -y libpq-dev
 ```
 
 ### 3. Create Environment Configuration

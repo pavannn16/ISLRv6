@@ -1,0 +1,195 @@
+Isolated Sign
+Language
+Recognition
+What it is and why it's important
+
+-by 21CE018-Pavan Chauhan
+-Mentor: Prof. Mrugendra Rahevar
+
+U. & P.U. Patel Department of Computer Engineering
+
+Overview
+What you need to know
+
+Isolated Sign Language Recognition
+using AI and Machine Learning.
+Goal: Build a model to recognize
+isolated signs from American Sign
+Language (ASL) vocabulary.
+Dataset: Isolated Sign Language
+Recognition Corpus (version 1.0).
+Supported Tasks: Sign Language
+Recognition.
+
+U. & P.U. Patel Department of Computer Engineering
+
+Dataset
+Summary
+The Isolated Sign Language Recognition corpus (version 1.0) details:
+Hand and facial landmarks from Mediapipe on ~100k videos of isolated signs.
+21 Deaf signers participated with a 250-sign vocabulary.
+Language: American Sign Language.
+Dataset Structure:
+Data Instances: Example data field with 'frame', 'type', 'landmark_index', 'x', 'y', 'z'.
+Data Fields: Detailed data field information available on Kaggle.
+
+U. & P.U. Patel Department of Computer Engineering
+
+Dataset Creation and Curation
+Curation Rationale:
+Dataset represents 250 first concepts taught to infants in any language.
+Aim to create isolated sign recognizer for educational games to help hearing
+parents learn ASL.
+Importance of avoiding Language Deprivation Syndrome in Deaf children.
+Source Data:
+21 signers recruited by the Deaf Professional Arts Network.
+Randomly selected English concepts to sign with smartphones.
+
+U. & P.U. Patel Department of Computer Engineering
+
+Data Collection and
+Normalization
+Data Collection Process:
+Signers recorded videos while signing each concept.
+Video extraction with buffer 0.5 seconds before button press and after button
+release.
+Variants of signs due to background, region, fingerspelling, and more.
+Data Normalisation:
+Handling left and right-handed signers, switching signing hands.
+Recognition system to handle variations.
+
+U. & P.U. Patel Department of Computer Engineering
+
+Model
+Training
+Script
+Overview
+
+DATA PREPROCESSING
+Model Architecture
+
+MODEL COMPILATION AND
+TRAINING
+Model Evaluation and
+Conversion
+
+U. & P.U. Patel Department of Computer Engineering
+
+Data Preprocessing
+Loading the Isolated Sign Language Recognition Corpus dataset.
+Preprocessing Steps:
+Extracting relevant hand and facial landmarks using Mediapipe.
+Creating a DataFrame of landmarks for each frame and sign type (face, pose,
+left hand, right hand).
+
+U. & P.U. Patel Department of Computer Engineering
+
+Model Architecture
+Model Overview:
+Using TensorFlow and Keras to build the Isolated Sign Language Recognition
+model.
+Architecture Details:
+Input and masking
+Extract lips, hands, and pose landmarks
+Flatten layer
+Transformer
+Dense layers for classification.
+Softmax activation for multi-class classification.
+U. & P.U. Patel Department of Computer Engineering
+
+U. & P.U. Patel Department of Computer Engineering
+
+Model Compilation and
+Training
+Model Compilation:
+Configuring the model for training.
+Setting the loss function (Sparse Categorical Crossentropy) and optimizer (Adam).
+Choosing evaluation metrics (accuracy).
+Model Training:
+Splitting the dataset into training and validation sets.
+Training the model using the training data.
+Monitoring training progress with validation data.
+
+U. & P.U. Patel Department of Computer Engineering
+
+U. & P.U. Patel Department of Computer Engineering
+
+Model Evaluation and
+Conversion
+Model Evaluation:
+Evaluating the model performance on the validation set.
+Calculating accuracy and other relevant metrics.
+Model Conversion:
+Converting the trained Keras model to TensorFlow Lite format.
+Saving the TFLite model to a file.
+
+U. & P.U. Patel Department of Computer Engineering
+
+U. & P.U. Patel Department of Computer Engineering
+
+U. & P.U. Patel Department of Computer Engineering
+
+App
+Implementation
+Overview
+
+App Implementation
+The Isolated Sign Language Recognition app allows users to capture sign
+language gestures and obtain real-time predictions.
+The app uses the Mediapipe library to extract hand and facial landmarks from the
+user's video feed.
+The captured landmarks are processed and used as input to the trained
+TensorFlow Lite model for prediction.
+The predicted sign is then displayed to the user along with its confidence score.
+
+U. & P.U. Patel Department of Computer Engineering
+
+App Architecture
+The app is built using the Streamlit framework, which allows for easy integration
+of machine learning models into web applications.
+Key Components:
+Video Capture: The app uses the user's webcam to capture real-time video.
+Landmark Extraction: Mediapipe is used to extract hand and facial landmarks
+from each video frame.
+Model Inference: The landmarks are fed into the TensorFlow Lite model to obtain
+predictions.
+Display: The predicted sign and its confidence score are displayed to the user.
+
+U. & P.U. Patel Department of Computer Engineering
+
+App Demonstration
+The app is simple to use:
+The user sets the duration (in seconds) for capturing the sign gesture.
+After clicking the "Start Capture" button, the webcam captures video for the
+specified duration.
+The landmarks are extracted using Mediapipe, and the video is processed frame
+by frame.
+Once the video capture is complete, the captured landmarks are passed to the
+TensorFlow Lite model for prediction.
+The predicted sign and its confidence score are displayed to the user
+
+U. & P.U. Patel Department of Computer Engineering
+
+App Demonstration
+
+U. & P.U. Patel Department of Computer Engineering
+
+Conclusion
+Isolated Sign Language Recognition is an
+essential technology for educational games
+and tools that aim to teach ASL to hearing
+parents of Deaf children.
+The developed model and app serve as
+valuable tools to bridge the communication
+gap between Deaf and hearing individuals.
+The project contributes to providing an
+inclusive learning environment for Deaf
+children and raising awareness about Deaf
+culture.
+U. & P.U. Patel Department of Computer Engineering
+
+Thank You!
+
+U. & P.U. Patel Department of Computer Engineering
+
+

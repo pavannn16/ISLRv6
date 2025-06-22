@@ -34,10 +34,10 @@ CAPTURED_VIDEO_PATH = UPLOAD_FOLDER / CAPTURED_VIDEO_FILENAME
 TEMP_VIDEO_PATH = UPLOAD_FOLDER / "temp_video_upload" # Temporary path for initial upload
 
 # Model and Data Paths (Ensure these are correct)
-DUMMY_PARQUET_SKEL_FILE = Path('/Users/pavan/Downloads/ISLRversions/ISLRv6/backend_data/data/239181.parquet')
-TFLITE_MODEL_PATH = Path('/Users/pavan/Downloads/ISLRversions/ISLRv6/backend_data/models/asl_model.tflite')
-CSV_FILE_PATH = Path('/Users/pavan/Downloads/ISLRversions/ISLRv6/backend_data/data/train.csv')
-CAPTURED_PARQUET_FILE = Path('/Users/pavan/Downloads/ISLRversions/ISLRv6/backend_data/shammers.parquet') # Output for prediction model
+DUMMY_PARQUET_SKEL_FILE = Path('/Users/pavan/ISLRversions/ISLRv6/backend_data/data/239181.parquet')
+TFLITE_MODEL_PATH = Path('/Users/pavan/ISLRversions/ISLRv6/backend_data/models/asl_model.tflite')
+CSV_FILE_PATH = Path('/Users/pavan/ISLRversions/ISLRv6/backend_data/data/train.csv')
+CAPTURED_PARQUET_FILE = Path('/Users/pavan/ISLRversions/ISLRv6/backend_data/shammers.parquet') # Output for prediction model
 
 # --- Initialization ---
 logging.info("Initializing backend...")

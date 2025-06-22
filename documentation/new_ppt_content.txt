@@ -1,0 +1,299 @@
+# SignEase - Isolated Sign Language Recognition
+## Presentation Content
+
+---
+
+## 1. INTRODUCTION
+
+### Project Overview
+- SignEase: AI-powered Isolated Sign Language Recognition (ISLR) system
+- Focuses on recognizing individual, isolated sign gestures from American Sign Language (ASL)
+- Real-time sign language interpretation with 87% accuracy
+- Utilizes computer vision and machine learning technologies
+- Goal: Build a model to recognize isolated signs from ASL vocabulary
+
+### Problem Statement
+- Communication barriers for millions of deaf and hard-of-hearing individuals worldwide
+- Risk of Language Deprivation Syndrome in Deaf children
+- Need for educational tools to help hearing parents learn ASL
+- Challenges in recognizing isolated signs as fundamental units of sign language
+- Complexity of capturing and interpreting 3D spatial movements from 2D video
+
+### Project Goals
+- Develop accurate, real-time isolated sign language recognition system
+- Create educational games and tools to help hearing parents learn ASL
+- Bridge communication gaps between Deaf and hearing individuals
+- Provide an inclusive learning environment for Deaf children
+- Raise awareness about Deaf culture
+
+### What is Isolated Sign Language Recognition?
+- Unlike continuous sign language recognition, ISLR focuses on individual signs
+- Each sign is treated as a discrete unit with a clear beginning and end
+- Comparable to isolated word recognition in speech processing
+- Focuses on a vocabulary of 250 first concepts taught to infants
+- Requires precise tracking of hand, face, and body landmarks in 3D space
+
+---
+
+## 2. DATASET OVERVIEW
+
+### Dataset Summary
+- Isolated Sign Language Recognition corpus (version 1.0)
+- Hand and facial landmarks from MediaPipe on ~100k videos of isolated signs
+- 21 Deaf signers participated in data collection
+- 250-sign vocabulary based on first concepts taught to infants
+- American Sign Language (ASL)
+
+### Dataset Structure
+- Data instances include frame, type, landmark_index, x, y, z coordinates
+- Comprehensive landmark data for face, hands, and pose
+- Multiple variations of signs due to regional differences and personal styles
+- Includes left and right-handed signers
+
+### Data Collection Process
+- Signers recorded videos while signing each concept
+- Video extraction with 0.5 second buffer before and after signing
+- Variants of signs due to background, region, fingerspelling
+- Normalization to handle left and right-handed signers
+
+### Dataset Curation Rationale
+- Represents 250 first concepts taught to infants in any language
+- Created to develop isolated sign recognizer for educational games
+- Aims to help hearing parents learn ASL
+- Addresses the importance of avoiding Language Deprivation Syndrome
+
+---
+
+## 3. DATA PROCESSING & MODEL TRAINING (EXPANDED)
+
+### Data Preprocessing Overview
+- Loading the Isolated Sign Language Recognition Corpus dataset
+- Extracting relevant hand and facial landmarks using MediaPipe
+- Creating a DataFrame of landmarks for each frame and sign type
+- Processing landmarks for face, pose, left hand, and right hand
+
+### Data Features
+- Input: 3D coordinates (x, y, z) from body landmarks extracted from video frames
+- Original data contains 543 landmarks per frame
+- Selected landmarks subset:
+  * Lips (40 landmarks)
+  * Left Hand (21 landmarks)
+  * Right Hand (21 landmarks)
+  * Pose landmarks (5 landmarks)
+- Each sign is treated as an isolated unit, making this an isolated sign language recognition task
+- Dataset contains 250 distinct sign classes
+
+### Data Preprocessing Steps
+- Frame normalization to handle variable video lengths
+- Standardization of landmark coordinates
+- Handling missing landmarks with special embeddings
+- Data augmentation techniques:
+  * Random frame masking (25% of frames)
+  * Noise addition to coordinates
+  * Random scaling and rotation
+
+### Model Architecture
+- **Overall Structure**: Input → Landmark Extraction → Transformer → Classification
+- **Input and Masking**:
+  * Process video frames to extract landmarks
+  * Create masks for handling variable-length sequences
+- **Landmark Extraction**:
+  * Extract lips, hands, and pose landmarks from each frame
+  * Process landmarks through embedding layers
+  * Flatten landmarks for further processing
+- **Transformer Encoder**:
+  * Multiple transformer blocks with multi-head self-attention
+  * Attention mechanism to focus on important parts of the sign
+  * Feed-forward network with activation functions
+  * Residual connections to improve gradient flow
+- **Classification Head**:
+  * Pooling layer to aggregate sequence information
+  * Dropout layer for regularization
+  * Dense layer with softmax activation for 250 sign classes
+
+### Model Compilation and Training
+- **Model Compilation**:
+  * Loss Function: Sparse Categorical Crossentropy with Label Smoothing
+  * Optimizer: Adam with weight decay (AdamW)
+  * Metrics: Accuracy, Top-5 Accuracy, Top-10 Accuracy
+- **Dataset Splitting**:
+  * Training and validation sets
+  * Ensuring balanced representation of all 250 sign classes
+  * Handling class imbalance with custom batch generation
+- **Training Process**:
+  * Batch size: 256
+  * Epochs: 100
+  * Learning rate scheduling with cosine decay
+  * Early stopping to prevent overfitting
+- **Regularization Techniques**:
+  * Dropout layers at various points in the network
+  * Label smoothing for better generalization
+  * Weight decay to prevent overfitting
+  * Data augmentation during training
+
+### Model Evaluation and Conversion
+- **Model Evaluation**:
+  * Accuracy: 87% on validation set
+  * Top-5 Accuracy: 95%
+  * Top-10 Accuracy: 98%
+  * Confusion matrix analysis for error patterns
+  * Per-class performance metrics
+- **Landmark Importance Analysis**:
+  * Hand landmarks provide the most discriminative features
+  * Lip landmarks contribute significantly for certain signs
+  * Pose landmarks help with signs involving body movement
+  * Attention visualization shows focus areas during recognition
+- **Model Conversion**:
+  * Converting the trained Keras model to TensorFlow Lite format
+  * Quantization to reduce model size
+  * Optimization for mobile and edge deployment
+  * Inference time < 100ms per prediction
+
+---
+
+## 4. APP IMPLEMENTATION
+
+### App Overview
+- Isolated Sign Language Recognition app for real-time sign detection
+- Uses MediaPipe to extract hand and facial landmarks from video feed
+- Processes landmarks as input to the trained TensorFlow Lite model
+- Displays predicted sign with confidence score to the user
+- Simple, intuitive interface for accessibility
+
+### App Pages and Functions
+- **Home Page**: Introduction to the app and navigation options
+- **Sign Detection**: Real-time sign recognition using webcam
+- **Dictionary**: Browse and learn ASL signs with example videos
+- **Visualization**: See how AI processes and analyzes your signs
+- **Settings**: Adjust camera settings and recognition parameters
+
+### App Architecture
+- Built using Streamlit framework for easy integration of ML models
+- Key components:
+  * Video Capture: Uses webcam to capture real-time video
+  * Landmark Extraction: MediaPipe extracts landmarks from each frame
+  * Model Inference: TFLite model processes landmarks for prediction
+  * Display: Shows prediction results to the user
+
+### User Interaction Flow
+- User sets duration for capturing the sign gesture
+- After clicking "Start Capture", webcam records for specified duration
+- System extracts landmarks using MediaPipe frame by frame
+- Once capture completes, landmarks are passed to the TFLite model
+- Predicted sign and confidence score are displayed to the user
+
+### Technical Implementation
+- Real-time video processing pipeline
+- Efficient landmark extraction and normalization
+- Model inference optimization for low latency
+- User-friendly interface with clear feedback
+- Error handling for various edge cases
+
+### App Demonstration
+[THIS SLIDE WOULD CONTAIN SCREENSHOTS/IMAGES OF THE APP IN ACTION]
+- Sign Detection interface showing webcam feed and prediction results
+- Dictionary page displaying sign examples
+- Visualization page showing landmark detection
+- Real-time recognition with confidence scores
+- Mobile and desktop versions of the interface
+
+---
+
+## 5. RESULTS AND CONCLUSION
+
+### Key Achievements
+- Successfully developed an Isolated Sign Language Recognition system
+- Achieved 87% accuracy on a challenging 250-sign vocabulary
+- Created a user-friendly application for real-time sign detection
+- Implemented efficient landmark extraction and processing pipeline
+- Optimized model for deployment on various platforms
+
+### Educational Impact
+- Provides valuable tool for teaching ASL to hearing parents
+- Helps bridge communication gaps between Deaf and hearing individuals
+- Contributes to preventing Language Deprivation Syndrome in Deaf children
+- Raises awareness about Deaf culture and sign language
+
+### Technical Contributions
+- Effective use of transformer architecture for sequential gesture recognition
+- Efficient landmark processing and feature extraction techniques
+- Balanced training approach for multi-class recognition
+- Streamlined deployment pipeline for edge devices
+
+### Conclusion
+- Isolated Sign Language Recognition is an essential technology for educational tools
+- The developed model and app serve as valuable communication bridges
+- The project contributes to creating an inclusive learning environment
+- Future work can expand vocabulary and improve recognition accuracy
+
+---
+
+## 6. FUTURE WORK
+
+### Short-term Improvements
+- Expand the sign vocabulary beyond the current 250 signs
+- Improve model accuracy through additional training data
+- Enhance the user interface for better accessibility
+- Optimize performance for lower-end devices
+- Add support for different sign language variants
+
+### Research Directions
+- Explore continuous sign language recognition
+- Investigate more advanced transformer architectures
+- Research multi-modal approaches combining video and text
+- Develop personalized models that adapt to individual signing styles
+- Explore transfer learning from larger sign language datasets
+
+### Potential Applications
+- Educational games for children learning sign language
+- Communication tools for Deaf-hearing interaction
+- Assistive technology in healthcare and public services
+- Sign language translation services for video content
+- Interactive learning environments for sign language education
+
+---
+
+## 7. ACKNOWLEDGEMENTS
+
+### Project Team
+- Student: Pavan Chauhan (21CE018)
+- Mentor: Prof. Mrugendra Rahevar
+- U. & P.U. Patel Department of Computer Engineering
+
+### Dataset Credits
+- Isolated Sign Language Recognition Corpus (version 1.0)
+- 21 Deaf signers who participated in data collection
+- Deaf Professional Arts Network for recruitment assistance
+
+### Technology Stack
+- TensorFlow and Keras for model development
+- MediaPipe for landmark detection
+- Streamlit for application development
+- Python ecosystem for data processing and analysis
+
+---
+
+## 8. THANK YOU!
+
+### Project Summary
+- Successfully developed an Isolated Sign Language Recognition system for ASL
+- Achieved 87% accuracy on a 250-sign vocabulary
+- Created a user-friendly application for real-time sign detection
+- Contributes to bridging communication gaps and preventing Language Deprivation Syndrome
+
+### Key Takeaways
+- Isolated Sign Language Recognition is essential for educational tools
+- The project demonstrates the power of AI in accessibility applications
+- Transformer-based models effectively capture the temporal nature of signs
+- The system provides a foundation for future sign language technologies
+
+### Contact Information
+- Student: Pavan Chauhan (21CE018)
+- U. & P.U. Patel Department of Computer Engineering
+- Email: [Contact Information]
+
+---
+
+## Thank You!
+
+Questions & Discussion

@@ -51,7 +51,7 @@ const ContactSection: React.FC<ContactSectionProps> = ({ contentReady }) => {
             animate={contentReady ? "visible" : "hidden"}
             className="mb-2 text-white/60"
           >
-            Email: pavannn16@gmail.com
+            Email: pchauha4@calstatela.edu
           </motion.p>
           <motion.p
             custom={12}
@@ -60,7 +60,7 @@ const ContactSection: React.FC<ContactSectionProps> = ({ contentReady }) => {
             animate={contentReady ? "visible" : "hidden"}
             className="text-white/60"
           >
-            Phone: +91 8160684323
+            Phone: +1 (626) 525 2476
           </motion.p>
         </div>
         <div>
@@ -134,7 +134,7 @@ const ContactSection: React.FC<ContactSectionProps> = ({ contentReady }) => {
             animate={contentReady ? "visible" : "hidden"}
             className="text-white/60"
           >
-            CHARUSAT Campus, 139, Highway, off Nadiad - Petlad Road, Changa, Gujarat 388421
+            California State University, Los Angeles 5151 STATE UNIVERSITY DRIVE, INTERNATIONAL OFFICE, LOS ANGELES, CA 90032
           </motion.p>
         </div>
       </div>

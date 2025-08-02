@@ -103,7 +103,7 @@ const TeamSection: React.FC<TeamSectionProps> = ({ contentReady }) => {
             <h4 className="text-xl font-semibold text-center mb-2">
               Pavan Chauhan
             </h4>
-            <p className="text-center text-white/40">Final Year Computer Engineering Grad, Machine Learning Enthusiast, Data Handling and Machine Learning Core</p>
+            <p className="text-center text-white/40">MSCS'27 at California State University, Los Angeles, Machine Learning Engineer, Data Handling and Machine Learning Core</p>
             <div className="flex justify-center mt-4">
               <motion.a
                 href="https://www.linkedin.com/in/pavanchauhan16/"

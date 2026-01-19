@@ -1,4 +1,4 @@
-# SignEase - Indian Sign Language Recognition
+# SignEase - Sign Language Recognition
 
 <div align="center">
   <img src="public/assets/SignEaseLogo.png" alt="SignEase Logo" width="120" />
